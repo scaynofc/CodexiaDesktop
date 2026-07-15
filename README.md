@@ -36,6 +36,19 @@ npm install
 npm run tauri dev
 ```
 
+## Versioning
+
+The project version (`VERSION`, `package.json`, `Cargo.toml`) is
+`0.1.0-alpha`. `src-tauri/tauri.conf.json`'s `version` field is
+deliberately kept plain (`0.1.0`, no prerelease suffix) - this is the one
+field passed straight to platform bundlers, and Windows' MSI bundler
+(WiX) rejects a non-numeric prerelease identifier
+(`optional pre-release identifier in app version must be numeric-only...
+for msi target`, confirmed via a real `npm run tauri build` run). This is
+a Windows Installer constraint, not a CodexiaDesktop inconsistency - the
+semantic project version stays `0.1.0-alpha` everywhere a human or a
+package manager reads it.
+
 ## Testing & Linting
 
 ```bash

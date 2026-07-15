@@ -1,6 +1,6 @@
 [package]
 name = "codexia-desktop"
-version = "0.1.0"
+version = "0.1.0-alpha"
 description = "Codexia Desktop - a native control center for the Codexia Core runtime"
 authors = ["Codexia"]
 edition = "2021"
