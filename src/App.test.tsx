@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { __resetConnectionStoreForTests, useConnectionStore } from "@/stores/connectionStore";
@@ -13,7 +13,10 @@ vi.mock("@tauri-apps/api/event", () => ({ listen: listenMock }));
 
 beforeEach(() => {
   __resetConnectionStoreForTests();
-  useConnectionStore.setState({ status: { state: "Connecting", health: null, restarted: false } });
+  useConnectionStore.setState({
+    status: { state: "Connecting", health: null, restarted: false },
+    showRestartNotice: false,
+  });
   invokeMock.mockReset();
   listenMock.mockReset();
   listenMock.mockResolvedValue(() => {});
@@ -53,7 +56,7 @@ describe("App", () => {
     expect(screen.queryByText("Core restarted")).not.toBeInTheDocument();
   });
 
-  it("shows a restart badge when the status reports one", async () => {
+  it("raises a restart badge when a new instance_id arrives, and it survives a later same-instance update until dismissed", async () => {
     invokeMock.mockResolvedValue({
       state: "Connected",
       health: {
@@ -62,14 +65,65 @@ describe("App", () => {
         core_version: "2.0.0",
         api_version: 1,
         protocol_version: 1,
-        instance_id: "new-instance",
+        instance_id: "boot-1",
         timestamp: "2026-07-16T00:00:00+00:00",
       },
-      restarted: true,
+      restarted: false,
     });
+    let emit: ((event: { payload: unknown }) => void) | undefined;
+    listenMock.mockImplementation(
+      (_event: string, callback: (event: { payload: unknown }) => void) => {
+        emit = callback;
+        return Promise.resolve(() => {});
+      },
+    );
 
     render(<App />);
+    await waitFor(() => expect(screen.getByText("Connected")).toBeInTheDocument());
+    expect(screen.queryByText("Core restarted")).not.toBeInTheDocument();
 
-    await waitFor(() => expect(screen.getByText("Core restarted")).toBeInTheDocument());
+    // A genuinely new instance_id arrives - Core restarted.
+    act(() => {
+      emit?.({
+        payload: {
+          state: "Connected",
+          health: {
+            status: "ok",
+            alive: true,
+            core_version: "2.0.0",
+            api_version: 1,
+            protocol_version: 1,
+            instance_id: "boot-2",
+            timestamp: "2026-07-16T00:00:05+00:00",
+          },
+          restarted: true,
+        },
+      });
+    });
+    expect(screen.getByText("Core restarted")).toBeInTheDocument();
+
+    // The next poll (same instance) already reports restarted: false on the
+    // wire - the badge must still be showing, since nobody dismissed it yet.
+    act(() => {
+      emit?.({
+        payload: {
+          state: "Connected",
+          health: {
+            status: "ok",
+            alive: true,
+            core_version: "2.0.0",
+            api_version: 1,
+            protocol_version: 1,
+            instance_id: "boot-2",
+            timestamp: "2026-07-16T00:00:08+00:00",
+          },
+          restarted: false,
+        },
+      });
+    });
+    expect(screen.getByText("Core restarted")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Dismiss"));
+    expect(screen.queryByText("Core restarted")).not.toBeInTheDocument();
   });
 });

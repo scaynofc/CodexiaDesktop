@@ -31,6 +31,8 @@ const STATE_BADGE_VARIANT: Record<
 function App() {
   const status = useConnectionStore((state) => state.status);
   const init = useConnectionStore((state) => state.init);
+  const showRestartNotice = useConnectionStore((state) => state.showRestartNotice);
+  const dismissRestartNotice = useConnectionStore((state) => state.dismissRestartNotice);
 
   useEffect(() => {
     void init();
@@ -42,13 +44,22 @@ function App() {
         <div className="flex flex-col items-center gap-2 text-center">
           <h1 className="text-3xl font-semibold tracking-tight">Codexia Desktop</h1>
           <Badge variant={STATE_BADGE_VARIANT[status.state]}>{STATE_LABEL[status.state]}</Badge>
-          {status.restarted && (
-            <Badge
-              variant="outline"
-              className="border-amber-500 text-amber-600 dark:text-amber-400"
-            >
-              Core restarted
-            </Badge>
+          {showRestartNotice && (
+            <div className="flex items-center gap-2">
+              <Badge
+                variant="outline"
+                className="border-amber-500 text-amber-600 dark:text-amber-400"
+              >
+                Core restarted
+              </Badge>
+              <button
+                type="button"
+                onClick={dismissRestartNotice}
+                className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+              >
+                Dismiss
+              </button>
+            </div>
           )}
         </div>
 

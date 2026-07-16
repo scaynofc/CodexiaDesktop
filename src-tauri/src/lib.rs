@@ -9,10 +9,14 @@ pub mod commands;
 pub mod core_bridge;
 pub mod services;
 
+use std::sync::Arc;
+
 use tauri::{Emitter, Manager};
 
 use crate::core_bridge::CoreHttpClient;
-use crate::services::connection::{run_connection_loop, ConnectionStatus};
+use crate::services::connection::{
+    run_connection_loop, run_supervised, ConnectionStatus, SUPERVISOR_RESTART_DELAY,
+};
 use crate::services::default_core_base_url;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -29,12 +33,25 @@ pub fn run() {
             app.manage(shared_status.clone());
 
             let app_handle = app.handle().clone();
-            let probe = CoreHttpClient::new(default_core_base_url());
-            tauri::async_runtime::spawn(run_connection_loop(probe, shared_status, move |status| {
-                // Best-effort: a failed emit means no window is listening yet,
-                // not a reason to crash the poll loop.
-                let _ = app_handle.emit("connection-status-changed", status);
-            }));
+            let probe = Arc::new(CoreHttpClient::new(default_core_base_url()));
+
+            // Wrapped in `run_supervised`: if `run_connection_loop` ever
+            // panics, it gets respawned instead of silently leaving the UI
+            // frozen on its last-known status with no indication anything
+            // is wrong (see docs/adr/005-connection-state-machine.md).
+            tauri::async_runtime::spawn(run_supervised(
+                move || {
+                    let probe = probe.clone();
+                    let shared_status = shared_status.clone();
+                    let app_handle = app_handle.clone();
+                    run_connection_loop(probe, shared_status, move |status| {
+                        // Best-effort: a failed emit means no window is
+                        // listening yet, not a reason to crash the poll loop.
+                        let _ = app_handle.emit("connection-status-changed", status);
+                    })
+                },
+                SUPERVISOR_RESTART_DELAY,
+            ));
 
             Ok(())
         })

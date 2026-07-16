@@ -25,6 +25,18 @@ const initialStatus: ConnectionStatus = { state: "Connecting", health: null, res
 interface ConnectionStore {
   status: ConnectionStatus;
   /**
+   * Whether a "Core restarted" notice should be visible. Deliberately NOT
+   * read directly from `status.restarted` - that field is transient (Rust
+   * recomputes it fresh on every poll, so it's back to `false` by the very
+   * next successful poll, ~3s later - the same narrow window that took
+   * repeated rapid screenshots to even capture during manual verification).
+   * This flag instead latches on when this store observes an instance_id
+   * change across updates, and only clears when `dismissRestartNotice` is
+   * called - so a user has a real chance to see and act on it.
+   */
+  showRestartNotice: boolean;
+  dismissRestartNotice: () => void;
+  /**
    * Subscribes to `connection-status-changed` (emitted by Desktop Services'
    * poll loop, see src-tauri/src/services/connection.rs) and fetches the
    * current value once via `get_connection_status`, so a component mounting
@@ -36,18 +48,31 @@ interface ConnectionStore {
 }
 
 let initPromise: Promise<void> | null = null;
+let lastSeenInstanceId: string | null = null;
+
+function applyStatus(status: ConnectionStatus, set: (partial: Partial<ConnectionStore>) => void) {
+  const instanceId = status.health?.instance_id ?? null;
+  const isRestart =
+    lastSeenInstanceId !== null && instanceId !== null && instanceId !== lastSeenInstanceId;
+  if (instanceId !== null) {
+    lastSeenInstanceId = instanceId;
+  }
+  set(isRestart ? { status, showRestartNotice: true } : { status });
+}
 
 export const useConnectionStore = create<ConnectionStore>((set) => ({
   status: initialStatus,
+  showRestartNotice: false,
+  dismissRestartNotice: () => set({ showRestartNotice: false }),
   init: () => {
     if (initPromise) return initPromise;
 
     initPromise = (async () => {
       const current = await invoke<ConnectionStatus>("get_connection_status");
-      set({ status: current });
+      applyStatus(current, set);
 
       await listen<ConnectionStatus>("connection-status-changed", (event) => {
-        set({ status: event.payload });
+        applyStatus(event.payload, set);
       });
     })();
 
@@ -58,5 +83,6 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
 /** Exposed for tests only - lets each test start from a clean subscription. */
 export function __resetConnectionStoreForTests(unlisten?: UnlistenFn): void {
   initPromise = null;
+  lastSeenInstanceId = null;
   unlisten?.();
 }

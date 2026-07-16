@@ -144,6 +144,51 @@ impl HealthProbe for crate::core_bridge::CoreHttpClient {
     }
 }
 
+/// Lets an `Arc<P>` stand in for `P` itself, so a single probe can be
+/// shared (cheaply cloned) across repeated `run_connection_loop` spawns in
+/// `run_supervised` below, without requiring `P` itself to implement
+/// `Clone`.
+impl<P: HealthProbe> HealthProbe for Arc<P> {
+    async fn get_health(&self) -> Result<HealthResponse, BridgeError> {
+        P::get_health(self).await
+    }
+}
+
+/// How long to wait before respawning a supervised task that just exited
+/// (whether by panic or, unexpectedly, by returning) - short enough that a
+/// transient crash barely delays reconnection, long enough to not spin a
+/// tight loop if the task fails immediately every time.
+pub const SUPERVISOR_RESTART_DELAY: Duration = Duration::from_secs(1);
+
+/// Runs `make_task()` forever, restarting it if it ever panics or returns.
+/// `run_connection_loop` below is itself an infinite loop that should only
+/// ever stop via a bug (a panic), and a silently-dead poll loop would freeze
+/// the UI's last-known status forever with no indication anything is
+/// wrong - this is the fix for that failure mode, not a hypothetical.
+///
+/// Deliberately plain `tokio::spawn` (not `tauri::async_runtime::spawn`), so
+/// this stays Tauri-agnostic and directly unit-testable with `#[tokio::test]`.
+/// Tauri's own async runtime is tokio, so the supervised task still runs on
+/// the same runtime regardless of how the *outer* future (this one) got
+/// there.
+pub async fn run_supervised<Fut>(make_task: impl Fn() -> Fut, restart_delay: Duration)
+where
+    Fut: std::future::Future<Output = ()> + Send + 'static,
+{
+    loop {
+        let handle = tokio::spawn(make_task());
+        match handle.await {
+            Ok(()) => {
+                eprintln!("[connection] supervised task exited normally; restarting");
+            }
+            Err(join_error) => {
+                eprintln!("[connection] supervised task panicked: {join_error}; restarting");
+            }
+        }
+        tokio::time::sleep(restart_delay).await;
+    }
+}
+
 /// Runs forever, polling `probe` and updating `shared_status`. `on_change`
 /// fires only when the status actually changes (not on every poll tick) -
 /// Tauri event emission happens there, keeping this function itself
@@ -457,5 +502,42 @@ mod tests {
             shared_status.lock().unwrap().state,
             ConnectionState::Connected
         );
+    }
+
+    /// The actual regression test for the "silent death" failure mode this
+    /// supervisor exists to fix: a task that panics on its first attempt
+    /// must still be running (and making progress) afterward, not just
+    /// caught-and-abandoned.
+    #[tokio::test]
+    async fn run_supervised_restarts_the_task_after_it_panics() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        let attempts = Arc::new(AtomicUsize::new(0));
+        let attempts_for_task = attempts.clone();
+
+        let supervisor = tokio::spawn(run_supervised(
+            move || {
+                let attempts = attempts_for_task.clone();
+                async move {
+                    let n = attempts.fetch_add(1, Ordering::SeqCst);
+                    if n == 0 {
+                        panic!("simulated panic on the first attempt");
+                    }
+                }
+            },
+            Duration::from_millis(5),
+        ));
+
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(2);
+        while attempts.load(Ordering::SeqCst) < 2 && tokio::time::Instant::now() < deadline {
+            tokio::time::sleep(Duration::from_millis(5)).await;
+        }
+
+        assert!(
+            attempts.load(Ordering::SeqCst) >= 2,
+            "supervisor did not restart the task after it panicked"
+        );
+
+        supervisor.abort();
     }
 }

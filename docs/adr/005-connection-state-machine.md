@@ -47,6 +47,27 @@ implementor), specifically so `next_status`, `poll_once`, and the backoff
 schedule can all be tested with a scripted fake and zero real HTTP or
 timing - see the test module in `connection.rs`.
 
+`lib.rs` never spawns `run_connection_loop` directly; it spawns
+`run_supervised(make_task, SUPERVISOR_RESTART_DELAY)`, where `make_task` is
+a closure that builds a fresh `run_connection_loop(...)` invocation each
+time it's called. `run_supervised` awaits the task's `JoinHandle` and, on
+either a panic or an (unexpected, since the loop is infinite) normal
+return, waits `SUPERVISOR_RESTART_DELAY` and calls `make_task` again - so a
+bug inside the poll loop degrades to "a ~1s gap in polling," not "the
+connection status is frozen for the rest of the app's life with no
+indication anything is wrong." `run_supervised` itself uses plain
+`tokio::spawn`, not `tauri::async_runtime::spawn`, keeping `connection.rs`
+free of any Tauri dependency and directly testable with `#[tokio::test]`
+(Tauri's own async runtime is tokio, so this still runs on the same
+runtime once the outer future is spawned via `tauri::async_runtime::spawn`
+in `lib.rs`). The same `Arc<Mutex<ConnectionStatus>>` is reused across
+restarts, so a recovered poll loop resumes from the last known status
+instead of resetting the UI to `Connecting`.
+
+The frontend's "Core restarted" notice is **not** driven directly by
+`status.restarted` - see "Deriving persistence from a transient signal"
+under Consequences for why, and how `connectionStore.ts` solves it instead.
+
 ## Alternatives Considered
 
 - **A boolean "connected" flag instead of four states** - simpler, but
@@ -91,6 +112,57 @@ timing - see the test module in `connection.rs`.
   encodes this: it asserts the second poll's "previous status" reflects the
   first poll's result even with no other handle to the shared state alive
   in the test itself - the exact condition `.setup()` creates.
+- **`std::panic::catch_unwind` around the poll loop** - proposed during
+  Phase 2 review as a guard against the poll loop dying silently. Rejected:
+  it doesn't work for async code. `catch_unwind`'s closure only _constructs_
+  a `Future` when called with an async fn - it returns immediately without
+  polling it, so no panic occurring later, while the future is actually
+  driven elsewhere, is ever inside that closure's call frame for
+  `catch_unwind` to catch. Tokio already isolates panics at the task
+  boundary (a panicking spawned task turns into an `Err(JoinError)` on its
+  `JoinHandle`, without crashing the process); the real gap was that
+  `lib.rs` discarded that `JoinHandle` instead of watching it. `run_supervised`
+  fixes the actual gap.
+
+## Recommendation deviations (from Phase 2 review feedback)
+
+Two mandatory conditions from the Phase 2 review were implemented
+differently than first proposed, after a closer look:
+
+- **Restart notice as a Rust-side "dismissed" flag** - proposed so the
+  badge persists until the user acknowledges it. Rejected in that form: it
+  would add a second writer to `ConnectionStatus` (the poll loop plus a new
+  dismiss command), breaking the single-writer invariant documented on
+  `commands::get_connection_status`. Solved entirely in `connectionStore.ts`
+  instead (see below) - `ConnectionStatus` itself stays exactly as designed
+  above.
+- **`clear_all_caches()` on restart** - proposed as a Phase 2 deliverable.
+  Deferred: Desktop has no caches yet (Task cache, Memory cache, Provider
+  status cache are Phase 4+ concerns), so there is nothing to invalidate
+  today. The `connection-status-changed` event already carries `restarted`
+  on the wire, which is the contract those future caches will subscribe to
+  - no code needed now beyond this note.
+
+### Deriving persistence from a transient signal
+
+The Rust-computed `restarted` field is deliberately transient - see
+"Decision" above, it describes what just changed on _this_ update, not an
+ongoing condition. A first attempt at a persistent "Core restarted" badge
+read `status.restarted` directly into the UI condition
+(`showRestart = status.restarted && !dismissed`); this doesn't actually
+work, because `restarted` is back to `false` by the very next successful
+poll (~3s later, same instance) regardless of any dismiss state - the same
+narrow window that took repeated 400ms-interval screenshots to even
+capture during manual verification. A user would very likely never see it.
+
+Fixed in `connectionStore.ts`: the store itself tracks the last-seen
+`instance_id` across every update (not just the one Rust flags as a
+restart) and sets its own `showRestartNotice` flag when that value changes
+between two consecutive updates. This flag only clears via
+`dismissRestartNotice()`, so it survives any number of subsequent
+same-instance polls. This is pure frontend/presentation state - it never
+writes back into `ConnectionStatus` or any Rust-owned state, so the
+single-writer invariant is untouched.
 
 ## Consequences
 

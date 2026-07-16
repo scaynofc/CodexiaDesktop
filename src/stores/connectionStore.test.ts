@@ -9,26 +9,35 @@ const { invokeMock, listenMock } = vi.hoisted(() => ({
 vi.mock("@tauri-apps/api/core", () => ({ invoke: invokeMock }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: listenMock }));
 
-const initialHealth = {
-  status: "ok",
-  alive: true,
-  core_version: "2.0.0",
-  api_version: 1,
-  protocol_version: 1,
-  instance_id: "boot-1",
-  timestamp: "2026-07-16T00:00:00+00:00",
-};
+function health(instanceId: string) {
+  return {
+    status: "ok",
+    alive: true,
+    core_version: "2.0.0",
+    api_version: 1,
+    protocol_version: 1,
+    instance_id: instanceId,
+    timestamp: "2026-07-16T00:00:00+00:00",
+  };
+}
 
 beforeEach(() => {
   __resetConnectionStoreForTests();
-  useConnectionStore.setState({ status: { state: "Connecting", health: null, restarted: false } });
+  useConnectionStore.setState({
+    status: { state: "Connecting", health: null, restarted: false },
+    showRestartNotice: false,
+  });
   invokeMock.mockReset();
   listenMock.mockReset();
 });
 
 describe("useConnectionStore", () => {
   it("fetches the initial status via get_connection_status on init", async () => {
-    invokeMock.mockResolvedValue({ state: "Connected", health: initialHealth, restarted: false });
+    invokeMock.mockResolvedValue({
+      state: "Connected",
+      health: health("boot-1"),
+      restarted: false,
+    });
     listenMock.mockResolvedValue(() => {});
 
     await useConnectionStore.getState().init();
@@ -66,5 +75,94 @@ describe("useConnectionStore", () => {
     emit?.({ payload: { state: "Reconnecting", health: null, restarted: false } });
 
     expect(useConnectionStore.getState().status.state).toBe("Reconnecting");
+  });
+
+  it("does not raise the restart notice on the very first status it ever sees", async () => {
+    invokeMock.mockResolvedValue({
+      state: "Connected",
+      health: health("boot-1"),
+      restarted: false,
+    });
+    listenMock.mockResolvedValue(() => {});
+
+    await useConnectionStore.getState().init();
+
+    expect(useConnectionStore.getState().showRestartNotice).toBe(false);
+  });
+
+  it("raises the restart notice when instance_id changes across updates, and it persists across a subsequent same-instance update", async () => {
+    invokeMock.mockResolvedValue({
+      state: "Connected",
+      health: health("boot-1"),
+      restarted: false,
+    });
+    let emit: ((event: { payload: unknown }) => void) | undefined;
+    listenMock.mockImplementation(
+      (_event: string, callback: (event: { payload: unknown }) => void) => {
+        emit = callback;
+        return Promise.resolve(() => {});
+      },
+    );
+
+    await useConnectionStore.getState().init();
+    expect(useConnectionStore.getState().showRestartNotice).toBe(false);
+
+    // Core restarted: a genuinely new instance_id arrives.
+    emit?.({ payload: { state: "Connected", health: health("boot-2"), restarted: true } });
+    expect(useConnectionStore.getState().showRestartNotice).toBe(true);
+
+    // The Rust-side `restarted` flag is transient and would already be back
+    // to `false` on this next poll (same instance, no change) - the notice
+    // must stay visible anyway, since the user hasn't dismissed it yet.
+    emit?.({ payload: { state: "Connected", health: health("boot-2"), restarted: false } });
+    expect(useConnectionStore.getState().showRestartNotice).toBe(true);
+  });
+
+  it("clears the restart notice on dismissRestartNotice and does not bring it back for the same instance", async () => {
+    invokeMock.mockResolvedValue({
+      state: "Connected",
+      health: health("boot-1"),
+      restarted: false,
+    });
+    let emit: ((event: { payload: unknown }) => void) | undefined;
+    listenMock.mockImplementation(
+      (_event: string, callback: (event: { payload: unknown }) => void) => {
+        emit = callback;
+        return Promise.resolve(() => {});
+      },
+    );
+
+    await useConnectionStore.getState().init();
+    emit?.({ payload: { state: "Connected", health: health("boot-2"), restarted: true } });
+    expect(useConnectionStore.getState().showRestartNotice).toBe(true);
+
+    useConnectionStore.getState().dismissRestartNotice();
+    expect(useConnectionStore.getState().showRestartNotice).toBe(false);
+
+    emit?.({ payload: { state: "Connected", health: health("boot-2"), restarted: false } });
+    expect(useConnectionStore.getState().showRestartNotice).toBe(false);
+  });
+
+  it("re-raises the restart notice for a further, different instance after a dismiss", async () => {
+    invokeMock.mockResolvedValue({
+      state: "Connected",
+      health: health("boot-1"),
+      restarted: false,
+    });
+    let emit: ((event: { payload: unknown }) => void) | undefined;
+    listenMock.mockImplementation(
+      (_event: string, callback: (event: { payload: unknown }) => void) => {
+        emit = callback;
+        return Promise.resolve(() => {});
+      },
+    );
+
+    await useConnectionStore.getState().init();
+    emit?.({ payload: { state: "Connected", health: health("boot-2"), restarted: true } });
+    useConnectionStore.getState().dismissRestartNotice();
+    expect(useConnectionStore.getState().showRestartNotice).toBe(false);
+
+    emit?.({ payload: { state: "Connected", health: health("boot-3"), restarted: true } });
+    expect(useConnectionStore.getState().showRestartNotice).toBe(true);
   });
 });
