@@ -42,21 +42,22 @@ describe("AppSidebar", () => {
       expect(button).toBeDisabled();
     }
 
-    // No stray links for unbuilt screens - only Dashboard should navigate.
+    // No stray links for unbuilt screens - only the enabled items navigate.
+    const enabledCount = NAV_ITEMS.filter((entry) => entry.enabled).length;
     const allLinks = screen.getAllByRole("link");
-    expect(allLinks).toHaveLength(1);
+    expect(allLinks).toHaveLength(enabledCount);
   });
 
   it("shows a tooltip explaining why a disabled item isn't clickable, on focus", async () => {
     renderSidebar();
 
-    const tasksButton = screen.getByRole("button", { name: /Task Center/ });
-    fireEvent.focus(tasksButton);
+    const timelineButton = screen.getByRole("button", { name: /Timeline/ });
+    fireEvent.focus(timelineButton);
 
     await waitFor(() => {
       // Radix renders the tooltip content twice (visible + a visually-hidden
       // a11y duplicate) - assert at least one is present, not exactly one.
-      expect(screen.getAllByText(/Task Center - not built yet/).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Timeline - not built yet/).length).toBeGreaterThan(0);
     });
   });
 });

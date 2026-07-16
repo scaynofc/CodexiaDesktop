@@ -25,6 +25,11 @@ pub struct HealthResponse {
 pub struct CoreHttpClient {
     client: reqwest::Client,
     base_url: String,
+    /// Reserved for Phase 11 (Settings) - CodexiaCore's `require_auth` is a
+    /// no-op while `settings.api_bearer_token` is unset (the default), so
+    /// this is unused today. Kept as a field now so adding real auth later
+    /// doesn't change every method signature added in the meantime.
+    bearer_token: Option<String>,
 }
 
 impl CoreHttpClient {
@@ -38,15 +43,43 @@ impl CoreHttpClient {
                 .build()
                 .expect("reqwest client with a fixed timeout must always build"),
             base_url: base_url.into(),
+            bearer_token: None,
+        }
+    }
+
+    /// A GET request builder pre-populated with the base URL and (if set)
+    /// the bearer token - the shared starting point every Core Bridge
+    /// method builds its request from, so auth wiring only has to happen
+    /// in one place.
+    pub(super) fn get_request(&self, path: &str) -> reqwest::RequestBuilder {
+        self.authorize(self.client.get(format!("{}{path}", self.base_url)))
+    }
+
+    pub(super) fn post_request(&self, path: &str) -> reqwest::RequestBuilder {
+        self.authorize(self.client.post(format!("{}{path}", self.base_url)))
+    }
+
+    /// Builds a GET request with a caller-supplied timeout instead of this
+    /// client's blanket [`REQUEST_TIMEOUT`] - needed for the SSE task-events
+    /// stream, which must stay open far longer than a normal health/task
+    /// call (see `core_bridge::sse`).
+    pub(super) fn get_request_with_timeout(
+        &self,
+        path: &str,
+        timeout: std::time::Duration,
+    ) -> reqwest::RequestBuilder {
+        self.get_request(path).timeout(timeout)
+    }
+
+    fn authorize(&self, builder: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+        match &self.bearer_token {
+            Some(token) => builder.bearer_auth(token),
+            None => builder,
         }
     }
 
     pub async fn get_health(&self) -> Result<HealthResponse, BridgeError> {
-        let response = self
-            .client
-            .get(format!("{}/health", self.base_url))
-            .send()
-            .await?;
+        let response = self.get_request("/health").send().await?;
 
         if !response.status().is_success() {
             return Err(BridgeError::UnexpectedStatus(response.status().as_u16()));

@@ -44,8 +44,8 @@ describe("App shell", () => {
   it("does not let a disabled item navigate anywhere", () => {
     render(<App />);
 
-    const tasksButton = screen.getByRole("button", { name: /Task Center/ });
-    expect(tasksButton).toBeDisabled();
+    const timelineButton = screen.getByRole("button", { name: /Timeline/ });
+    expect(timelineButton).toBeDisabled();
     // Still on Dashboard - clicking (were it possible) has nowhere to go.
     expect(screen.getByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
   });

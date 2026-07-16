@@ -3,6 +3,7 @@
 //! state. Consumes Core Bridge, never talks HTTP/SSE directly itself.
 
 pub mod connection;
+pub mod tasks;
 
 /// Where Core is expected to be running - a plain default for now (matches
 /// `codexia.api.app.main()`'s own default host/port); Phase 11 (Settings)

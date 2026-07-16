@@ -12,10 +12,9 @@ describe("NAV_ITEMS", () => {
     expect(new Set(paths).size).toBe(paths.length);
   });
 
-  it("has exactly one enabled item today: Dashboard", () => {
-    const enabled = NAV_ITEMS.filter((item) => item.enabled);
-    expect(enabled).toHaveLength(1);
-    expect(enabled[0].id).toBe("dashboard");
+  it("has exactly the enabled items built so far: Dashboard and Task Center", () => {
+    const enabledIds = NAV_ITEMS.filter((item) => item.enabled).map((item) => item.id);
+    expect(enabledIds).toEqual(["dashboard", "tasks"]);
   });
 
   it("gives Dashboard the root path", () => {

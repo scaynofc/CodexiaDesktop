@@ -5,13 +5,16 @@
 //! no caching. Desktop Services owns all of that - Core Bridge's functions
 //! are one-shot: make a single call, return a `Result`, done.
 //!
-//! An SSE client (for `/ask/stream` and `/tasks/{id}/events`) is deliberately
-//! not built yet - nothing in this phase consumes it. It lands in whichever
-//! later phase (Task Center / Timeline) is the first real consumer, per this
-//! project's "reuse, don't invent ahead of need" convention.
+//! The SSE client (`sse.rs`, for `/tasks/{id}/events`) is hand-rolled on top
+//! of `reqwest::Response::chunk()` rather than a dedicated SSE crate - see
+//! docs/adr/007-task-center-polling-and-sse.md for why.
 
 mod error;
 mod http;
+mod sse;
+mod tasks;
 
 pub use error::BridgeError;
 pub use http::{CoreHttpClient, HealthResponse};
+pub use sse::{watch_task, TaskEvent};
+pub use tasks::{CancelResult, Task, TaskCreated, TaskState, TaskStep, TimelineEvent, Usage};

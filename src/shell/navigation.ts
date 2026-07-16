@@ -40,7 +40,7 @@ export interface NavItem {
  */
 export const NAV_ITEMS: readonly NavItem[] = [
   { id: "dashboard", label: "Dashboard", path: "/", icon: LayoutDashboard, enabled: true },
-  { id: "tasks", label: "Task Center", path: "/tasks", icon: ListTodo, enabled: false },
+  { id: "tasks", label: "Task Center", path: "/tasks", icon: ListTodo, enabled: true },
   { id: "timeline", label: "Timeline", path: "/timeline", icon: History, enabled: false },
   { id: "providers", label: "Provider Center", path: "/providers", icon: Cpu, enabled: false },
   { id: "gpu", label: "GPU Center", path: "/gpu", icon: Gauge, enabled: false },

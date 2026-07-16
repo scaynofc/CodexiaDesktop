@@ -5,14 +5,15 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import AppHeader from "@/shell/AppHeader";
 import AppSidebar from "@/shell/AppSidebar";
 import Dashboard from "@/screens/Dashboard";
+import Tasks from "@/screens/Tasks";
 import { useConnectionStore } from "@/stores/connectionStore";
 
 /**
- * Phase 3 (Application Shell). `MemoryRouter` (not Browser/HashRouter) -
- * a desktop app has no meaningful URL bar, and Tauri's asset protocol has
- * no SPA-fallback for a deep path on reload - see
- * docs/adr/006-application-shell-navigation.md. Only Dashboard has a
- * registered `<Route>` today; every other planned screen (see
+ * Phase 3 (Application Shell) + Phase 4 (Task Center). `MemoryRouter` (not
+ * Browser/HashRouter) - a desktop app has no meaningful URL bar, and
+ * Tauri's asset protocol has no SPA-fallback for a deep path on reload -
+ * see docs/adr/006-application-shell-navigation.md. Dashboard and Task
+ * Center have registered `<Route>`s; every other planned screen (see
  * src/shell/navigation.ts) renders as a disabled sidebar item until its
  * own phase lands.
  */
@@ -33,6 +34,7 @@ function App() {
             <main className="flex-1 p-6">
               <Routes>
                 <Route path="/" element={<Dashboard />} />
+                <Route path="/tasks" element={<Tasks />} />
               </Routes>
             </main>
           </SidebarInset>
