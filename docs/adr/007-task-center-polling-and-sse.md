@@ -104,10 +104,51 @@ watch attempt and when the stream ended.
   paper over exactly the state-poisoning risk that must instead be avoided
   by discipline (compute before lock, infallible critical section).
 
+## Post-acceptance: real verification against a live Ollama-backed Core
+
+This phase's own end-to-end verification was blocked in its first pass -
+no LLM provider was configured, so no task could actually progress past
+planning. A follow-up real-provider verification session (real Ollama,
+`qwen2.5:7b`) ran the full create → running → blocked → resume → done and
+create → running → cancel → cancelled flows against a genuinely live
+Core, and found two real bugs neither the unit-test suite nor the earlier
+manual pass could have caught:
+
+1. **CodexiaCore**: every `background: true` task silently failed to
+   persist at all (`sqlite3.ProgrammingError: SQLite objects created in a
+   thread can only be used in that same thread`) - `get_orchestrator()`/
+   `get_engine()` are sync FastAPI dependencies, so lazily constructing
+   their `Sqlite*Store`s runs on a threadpool worker thread, but
+   `BackgroundTaskRunner`'s `asyncio.create_task()`-driven execution (and
+   the SSE endpoint's polling) runs on the main event loop thread - a
+   different thread. Fixed CodexiaCore-side (`check_same_thread=False`,
+   matching an already-established precedent in that codebase,
+   `health/tool_stats_store.py`) across every `Sqlite*Store` reachable
+   from `Engine`'s default construction, not just the task store - the
+   same mismatch affected all of them. Not a Desktop bug, but Task Center
+   could not function at all until it was fixed.
+2. **CodexiaDesktop**: selecting any task crashed the entire application
+   (`there is no reactor running` -> an unwind-across-FFI abort). The
+   `watch_task` command was a plain sync `fn`, but
+   `start_watching_task` calls plain `tokio::spawn` internally (see
+   "The per-task SSE watch is deliberately NOT wrapped in
+   `run_supervised`" above) - which needs an ambient Tokio reactor, and a
+   sync Tauri command runs on a bare OS thread with none. Fixed by making
+   `watch_task` `async fn`, matching its sibling action commands - Tauri
+   only guarantees a Tokio-backed context for async commands.
+
+Both fixes were verified with their own regression coverage (a real
+cross-thread SQLite test in CodexiaCore; the existing Rust/TS suites
+re-run clean in Desktop) and then re-confirmed live: the full
+create/watch/resume/cancel cycle, and a real batch of 11 tasks rendering
+correctly in the actual running app.
+
 ## Consequences
 
-- No CodexiaCore changes were needed for this phase - the existing API
-  surface was already sufficient.
+- No CodexiaCore *API* changes were needed for this phase - the existing
+  REST/SSE surface was already sufficient. A CodexiaCore *bug fix* (above)
+  was needed before that surface actually worked under real background
+  execution, which is a different thing from needing new API surface.
 - Every Task Center action (create/resume/cancel) is a two-step Desktop
   Services function: call Core Bridge, then refresh the list - the same
   shape every time, easy to extend if a future action is added.
