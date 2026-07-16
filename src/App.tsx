@@ -1,54 +1,73 @@
-import { useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import { Button } from "@/components/ui/button";
+import { useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useConnectionStore, type ConnectionState } from "@/stores/connectionStore";
+
+const STATE_LABEL: Record<ConnectionState, string> = {
+  Connecting: "Connecting…",
+  Connected: "Connected",
+  Reconnecting: "Reconnecting…",
+  Disconnected: "Disconnected",
+};
+
+const STATE_BADGE_VARIANT: Record<
+  ConnectionState,
+  "default" | "secondary" | "destructive" | "outline"
+> = {
+  Connecting: "outline",
+  Connected: "default",
+  Reconnecting: "secondary",
+  Disconnected: "destructive",
+};
 
 /**
- * Phase 1 (Desktop Foundation) shell.
+ * Phase 2 (Core Bridge) shell.
  *
- * This intentionally does NOT contain the real application navigation/
- * sidebar - that is Phase 3 (Application Shell). This screen exists only
- * to prove the stack (Tauri + React + TypeScript + Tailwind + shadcn/ui)
- * renders correctly and that the Rust <-> JS bridge (`invoke`) works
- * end to end, via the `commands::greet` smoke-test command.
+ * Real connection status now, replacing Phase 1's smoke-test screen -
+ * proves the whole chain (Rust poll loop -> Tauri event -> Zustand store
+ * -> React render) actually works end to end. Real screens (Dashboard,
+ * Tasks, ...) still arrive starting Phase 3.
  */
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+  const status = useConnectionStore((state) => state.status);
+  const init = useConnectionStore((state) => state.init);
 
-  async function greet() {
-    setGreetMsg(await invoke("greet", { name }));
-  }
+  useEffect(() => {
+    void init();
+  }, [init]);
 
   return (
     <TooltipProvider>
-      <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background p-8 text-foreground">
+      <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background p-8 text-foreground">
         <div className="flex flex-col items-center gap-2 text-center">
           <h1 className="text-3xl font-semibold tracking-tight">Codexia Desktop</h1>
-          <Badge variant="secondary">Phase 1 — Foundation</Badge>
-          <p className="max-w-md text-sm text-muted-foreground">
-            Native control center for the Codexia Core runtime. This screen only proves the stack is
-            wired correctly - real screens arrive in later phases.
-          </p>
+          <Badge variant={STATE_BADGE_VARIANT[status.state]}>{STATE_LABEL[status.state]}</Badge>
+          {status.restarted && (
+            <Badge
+              variant="outline"
+              className="border-amber-500 text-amber-600 dark:text-amber-400"
+            >
+              Core restarted
+            </Badge>
+          )}
         </div>
 
-        <form
-          className="flex items-center gap-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void greet();
-          }}
-        >
-          <input
-            id="greet-input"
-            className="h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            onChange={(event) => setName(event.currentTarget.value)}
-            placeholder="Rust bridge smoke test..."
-          />
-          <Button type="submit">Invoke</Button>
-        </form>
-        {greetMsg && <p className="text-sm text-muted-foreground">{greetMsg}</p>}
+        {status.health ? (
+          <dl className="grid grid-cols-[auto_auto] gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            <dt>Core version</dt>
+            <dd>{status.health.core_version}</dd>
+            <dt>API version</dt>
+            <dd>{status.health.api_version}</dd>
+            <dt>Protocol version</dt>
+            <dd>{status.health.protocol_version}</dd>
+            <dt>Instance</dt>
+            <dd className="font-mono text-xs">{status.health.instance_id.slice(0, 8)}</dd>
+          </dl>
+        ) : (
+          <p className="max-w-md text-center text-sm text-muted-foreground">
+            Waiting for Codexia Core at http://127.0.0.1:8000 …
+          </p>
+        )}
       </main>
     </TooltipProvider>
   );
