@@ -1,6 +1,7 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
+import { NAV_ITEMS } from "@/shell/navigation";
 import { __resetConnectionStoreForTests, useConnectionStore } from "@/stores/connectionStore";
 
 const { invokeMock, listenMock } = vi.hoisted(() => ({
@@ -19,111 +20,33 @@ beforeEach(() => {
   });
   invokeMock.mockReset();
   listenMock.mockReset();
+  invokeMock.mockReturnValue(new Promise(() => {})); // never resolves - status detail isn't this test's concern
   listenMock.mockResolvedValue(() => {});
 });
 
-describe("App", () => {
-  it("shows Connecting before the initial status arrives", () => {
-    invokeMock.mockReturnValue(new Promise(() => {})); // never resolves in this test
-
+describe("App shell", () => {
+  it("renders the sidebar with every planned screen", () => {
     render(<App />);
 
-    expect(screen.getByRole("heading", { name: "Codexia Desktop" })).toBeInTheDocument();
-    expect(screen.getByText("Connecting…")).toBeInTheDocument();
+    const nav = within(screen.getByRole("navigation", { name: "Primary" }));
+    for (const item of NAV_ITEMS) {
+      expect(nav.getByText(item.label)).toBeInTheDocument();
+    }
+  });
+
+  it("shows Dashboard on the default route", () => {
+    render(<App />);
+
+    expect(screen.getByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
     expect(screen.getByText(/Waiting for Codexia Core/)).toBeInTheDocument();
   });
 
-  it("shows Connected with Core version details once the initial status resolves", async () => {
-    invokeMock.mockResolvedValue({
-      state: "Connected",
-      health: {
-        status: "ok",
-        alive: true,
-        core_version: "2.0.0",
-        api_version: 1,
-        protocol_version: 1,
-        instance_id: "abcdef1234567890",
-        timestamp: "2026-07-16T00:00:00+00:00",
-      },
-      restarted: false,
-    });
-
+  it("does not let a disabled item navigate anywhere", () => {
     render(<App />);
 
-    await waitFor(() => expect(screen.getByText("Connected")).toBeInTheDocument());
-    expect(screen.getByText("2.0.0")).toBeInTheDocument();
-    expect(screen.getByText("abcdef12")).toBeInTheDocument();
-    expect(screen.queryByText("Core restarted")).not.toBeInTheDocument();
-  });
-
-  it("raises a restart badge when a new instance_id arrives, and it survives a later same-instance update until dismissed", async () => {
-    invokeMock.mockResolvedValue({
-      state: "Connected",
-      health: {
-        status: "ok",
-        alive: true,
-        core_version: "2.0.0",
-        api_version: 1,
-        protocol_version: 1,
-        instance_id: "boot-1",
-        timestamp: "2026-07-16T00:00:00+00:00",
-      },
-      restarted: false,
-    });
-    let emit: ((event: { payload: unknown }) => void) | undefined;
-    listenMock.mockImplementation(
-      (_event: string, callback: (event: { payload: unknown }) => void) => {
-        emit = callback;
-        return Promise.resolve(() => {});
-      },
-    );
-
-    render(<App />);
-    await waitFor(() => expect(screen.getByText("Connected")).toBeInTheDocument());
-    expect(screen.queryByText("Core restarted")).not.toBeInTheDocument();
-
-    // A genuinely new instance_id arrives - Core restarted.
-    act(() => {
-      emit?.({
-        payload: {
-          state: "Connected",
-          health: {
-            status: "ok",
-            alive: true,
-            core_version: "2.0.0",
-            api_version: 1,
-            protocol_version: 1,
-            instance_id: "boot-2",
-            timestamp: "2026-07-16T00:00:05+00:00",
-          },
-          restarted: true,
-        },
-      });
-    });
-    expect(screen.getByText("Core restarted")).toBeInTheDocument();
-
-    // The next poll (same instance) already reports restarted: false on the
-    // wire - the badge must still be showing, since nobody dismissed it yet.
-    act(() => {
-      emit?.({
-        payload: {
-          state: "Connected",
-          health: {
-            status: "ok",
-            alive: true,
-            core_version: "2.0.0",
-            api_version: 1,
-            protocol_version: 1,
-            instance_id: "boot-2",
-            timestamp: "2026-07-16T00:00:08+00:00",
-          },
-          restarted: false,
-        },
-      });
-    });
-    expect(screen.getByText("Core restarted")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByText("Dismiss"));
-    expect(screen.queryByText("Core restarted")).not.toBeInTheDocument();
+    const tasksButton = screen.getByRole("button", { name: /Task Center/ });
+    expect(tasksButton).toBeDisabled();
+    // Still on Dashboard - clicking (were it possible) has nowhere to go.
+    expect(screen.getByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
   });
 });

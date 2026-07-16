@@ -2,16 +2,18 @@
 
 A native control center for the [Codexia Core](../CodexiaCore) runtime —
 Dashboard, Task Center, Timeline, Provider Center, GPU Center, Approval
-Center, Log Center, and Settings, built on Tauri v2 + Rust + React.
+Center, Memory Center, Log Center, and Settings, built on Tauri v2 + Rust +
+React.
 
 Codexia Desktop never runs inference itself. Every model call stays in
 Codexia Core; this app only talks to Core's HTTP/SSE API.
 
-**Status:** Phase 1 (Foundation) — an empty but real, working shell.
-Real screens land in later phases. See `docs/adr/` for the architectural
-decisions behind this app, and the CodexiaCore repo's own
-`MASTER_ROADMAP_V2.md` / Phase 0 architecture review for the cross-repo
-context this project builds on.
+**Status:** Phase 3 (Application Shell) — sidebar navigation and routing
+for all 9 planned screens; Dashboard is the first real one. The other 8
+appear as disabled sidebar items until their own phase lands. See
+`docs/adr/` for the architectural decisions behind this app, and the
+CodexiaCore repo's own `MASTER_ROADMAP_V2.md` / Phase 0 architecture
+review for the cross-repo context this project builds on.
 
 ## Architecture
 
@@ -74,7 +76,8 @@ src-tauri/src/
 
 src/
 ├── screens/       Presentation - render-only (Dashboard, Tasks, ...)
+├── shell/         Sidebar, header, and the nav manifest routes/sidebar both read
 ├── stores/        Zustand stores fed by Tauri events (not by direct fetch)
 ├── components/ui/ shadcn/ui components (vendored, regenerated via `npx shadcn add`)
-└── App.tsx
+└── App.tsx        Shell composition: router + sidebar + header + routed screen
 ```
