@@ -53,15 +53,26 @@ pub async fn refresh_tasks(
 /// `services::tasks::start_watching_task`. Fire-and-forget: the watch runs
 /// in the background and reports back via `task-detail-changed`/
 /// `tasks-changed` events, not a return value.
+///
+/// Deliberately `async fn`, even though its body never awaits anything:
+/// `start_watching_task` calls plain `tokio::spawn` internally (see
+/// `services/tasks.rs`'s module docstring for why it's plain `tokio::spawn`
+/// and not `tauri::async_runtime::spawn`), which needs an ambient Tokio
+/// reactor to attach to. Tauri only guarantees that for `async fn`
+/// commands, which it dispatches through its own (Tokio-backed) async
+/// runtime; a plain sync `fn` command runs on a bare OS thread with no
+/// reactor at all, and `tokio::spawn` panics immediately in that context
+/// ("there is no reactor running") - a real crash this project's own
+/// manual verification caught (see docs/adr/007-task-center-polling-and-sse.md).
 #[tauri::command]
-pub fn watch_task(
+pub async fn watch_task(
     task_id: String,
     client: State<'_, Arc<CoreHttpClient>>,
     watched: State<'_, SharedWatchedTask>,
     watch_handle: State<'_, SharedTaskWatchHandle>,
     task_list: State<'_, SharedTaskList>,
     app: AppHandle,
-) {
+) -> Result<(), String> {
     tasks::start_watching_task(
         client.inner().clone(),
         task_id,
@@ -81,6 +92,7 @@ pub fn watch_task(
             }
         },
     );
+    Ok(())
 }
 
 /// Creates a task (always `background: true` under the hood - see
