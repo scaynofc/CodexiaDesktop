@@ -248,15 +248,19 @@ async fn run_watch_with_retry(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn create_task_and_refresh(
     client: &CoreHttpClient,
     goal: &str,
     require_approval: bool,
     simulate: bool,
+    project_id: Option<&str>,
     task_list: &SharedTaskList,
     on_list_change: &impl Fn(&[Task]),
 ) -> Result<core_bridge::TaskCreated, BridgeError> {
-    let created = client.create_task(goal, require_approval, simulate).await?;
+    let created = client
+        .create_task(goal, require_approval, simulate, project_id)
+        .await?;
     refresh_task_list(client, task_list, on_list_change).await?;
     Ok(created)
 }
@@ -291,6 +295,7 @@ mod tests {
             delegation_depth: 0,
             forced_role: None,
             simulated: false,
+            project_id: None,
         }
     }
 

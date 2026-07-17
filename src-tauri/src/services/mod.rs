@@ -3,6 +3,7 @@
 //! state. Consumes Core Bridge, never talks HTTP/SSE directly itself.
 
 pub mod connection;
+pub mod memory;
 pub mod metrics;
 pub mod runtime;
 pub mod tasks;

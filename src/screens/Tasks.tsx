@@ -16,13 +16,14 @@ const STATE_BADGE_VARIANT: Record<TaskState, "default" | "secondary" | "destruct
   };
 
 interface NewTaskFormProps {
-  onCreate: (goal: string, requireApproval: boolean, simulate: boolean) => void;
+  onCreate: (goal: string, requireApproval: boolean, simulate: boolean, projectId: string) => void;
 }
 
 function NewTaskForm({ onCreate }: NewTaskFormProps) {
   const [goal, setGoal] = useState("");
   const [requireApproval, setRequireApproval] = useState(false);
   const [simulate, setSimulate] = useState(false);
+  const [projectId, setProjectId] = useState("");
 
   return (
     <form
@@ -31,7 +32,7 @@ function NewTaskForm({ onCreate }: NewTaskFormProps) {
         event.preventDefault();
         const trimmed = goal.trim();
         if (!trimmed) return;
-        onCreate(trimmed, requireApproval, simulate);
+        onCreate(trimmed, requireApproval, simulate, projectId);
         setGoal("");
       }}
     >
@@ -41,6 +42,13 @@ function NewTaskForm({ onCreate }: NewTaskFormProps) {
         placeholder="Describe a goal for Codexia to work on..."
         rows={3}
         className="w-full resize-none rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+      />
+      <input
+        type="text"
+        value={projectId}
+        onChange={(event) => setProjectId(event.target.value)}
+        placeholder="Project id (optional - enables project memory)"
+        className="w-full rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
       />
       <label className="flex items-center gap-2 text-xs text-muted-foreground">
         <input
@@ -143,8 +151,8 @@ function Tasks() {
     <div className="flex h-full gap-6">
       <div className="flex w-80 shrink-0 flex-col gap-4">
         <NewTaskForm
-          onCreate={(goal, requireApproval, simulate) =>
-            void createTask(goal, requireApproval, simulate)
+          onCreate={(goal, requireApproval, simulate, projectId) =>
+            void createTask(goal, requireApproval, simulate, projectId)
           }
         />
 

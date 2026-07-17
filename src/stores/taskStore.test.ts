@@ -24,6 +24,7 @@ function task(id: string, overrides: Partial<Task> = {}): Task {
     delegation_depth: 0,
     forced_role: null,
     simulated: false,
+    project_id: null,
     ...overrides,
   };
 }
@@ -112,9 +113,32 @@ describe("useTaskStore", () => {
       goal: "do something",
       requireApproval: true,
       simulate: false,
+      projectId: null,
     });
     expect(created.task_id).toBe("new-task");
     expect(useTaskStore.getState().selectedTaskId).toBe("new-task");
+  });
+
+  it("createTask trims and forwards a project id when given", async () => {
+    invokeMock.mockResolvedValueOnce({ task_id: "new-task" });
+
+    await useTaskStore.getState().createTask("do something", false, false, "  proj-1  ");
+
+    expect(invokeMock).toHaveBeenCalledWith(
+      "create_task",
+      expect.objectContaining({ projectId: "proj-1" }),
+    );
+  });
+
+  it("createTask sends null for a blank/whitespace-only project id", async () => {
+    invokeMock.mockResolvedValueOnce({ task_id: "new-task" });
+
+    await useTaskStore.getState().createTask("do something", false, false, "   ");
+
+    expect(invokeMock).toHaveBeenCalledWith(
+      "create_task",
+      expect.objectContaining({ projectId: null }),
+    );
   });
 
   it("resumeTask and cancelTask invoke the matching commands", async () => {

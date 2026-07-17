@@ -7,9 +7,11 @@ use std::sync::Arc;
 use tauri::{AppHandle, Emitter, State};
 
 use crate::core_bridge::{
-    CancelResult, CoreHttpClient, MetricsSnapshot, OllamaRuntimeStatus, Task, TaskCreated,
+    CancelResult, CoreHttpClient, MemoryItem, MetricsSnapshot, OllamaRuntimeStatus, Task,
+    TaskCreated,
 };
 use crate::services::connection::{ConnectionStatus, SharedConnectionStatus};
+use crate::services::memory;
 use crate::services::metrics;
 use crate::services::runtime;
 use crate::services::tasks::{self, SharedTaskList, SharedTaskWatchHandle, SharedWatchedTask};
@@ -109,6 +111,7 @@ pub async fn create_task(
     goal: String,
     require_approval: bool,
     simulate: bool,
+    project_id: Option<String>,
     client: State<'_, Arc<CoreHttpClient>>,
     task_list: State<'_, SharedTaskList>,
     watched: State<'_, SharedWatchedTask>,
@@ -120,6 +123,7 @@ pub async fn create_task(
         &goal,
         require_approval,
         simulate,
+        project_id.as_deref(),
         task_list.inner(),
         &{
             let app = app.clone();
@@ -211,6 +215,32 @@ pub async fn get_ollama_runtime(
     client: State<'_, Arc<CoreHttpClient>>,
 ) -> Result<OllamaRuntimeStatus, String> {
     runtime::fetch_ollama_runtime(client.inner())
+        .await
+        .map_err(|error| error.to_string())
+}
+
+/// Fetches a project's current memory items fresh - called both on
+/// Memory Center's mount/project-id change and by its "Refresh" button
+/// (see `services::memory`).
+#[tauri::command]
+pub async fn get_project_memory(
+    project_id: String,
+    client: State<'_, Arc<CoreHttpClient>>,
+) -> Result<Vec<MemoryItem>, String> {
+    memory::fetch_project_memory(client.inner(), &project_id)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+/// Forgets a memory key, then returns the refreshed list in the same
+/// round trip (see `services::memory::forget_and_refresh`).
+#[tauri::command]
+pub async fn forget_project_memory(
+    project_id: String,
+    key: String,
+    client: State<'_, Arc<CoreHttpClient>>,
+) -> Result<Vec<MemoryItem>, String> {
+    memory::forget_and_refresh(client.inner(), &project_id, &key)
         .await
         .map_err(|error| error.to_string())
 }

@@ -51,7 +51,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     icon: ShieldCheck,
     enabled: false,
   },
-  { id: "memory", label: "Memory Center", path: "/memory", icon: Boxes, enabled: false },
+  { id: "memory", label: "Memory Center", path: "/memory", icon: Boxes, enabled: true },
   { id: "logs", label: "Log Center", path: "/logs", icon: ScrollText, enabled: false },
   { id: "settings", label: "Settings", path: "/settings", icon: SettingsIcon, enabled: false },
 ];

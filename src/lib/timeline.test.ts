@@ -43,6 +43,7 @@ function task(id: string, overrides: Partial<Task> = {}): Task {
     delegation_depth: 0,
     forced_role: null,
     simulated: false,
+    project_id: null,
     ...overrides,
   };
 }

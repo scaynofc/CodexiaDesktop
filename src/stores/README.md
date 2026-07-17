@@ -23,3 +23,8 @@ store reactively.
 - `runtimeStore.ts` (Phase 7) - same shape as `metricsStore.ts`, a single
   `fetchRuntime()` action wrapping `get_ollama_runtime` - see
   `docs/adr/010-runtime-center-ollama-proxy.md`.
+- `memoryStore.ts` (Phase 8) - `fetchMemory(projectId)`/`forgetKey(projectId, key)`
+  wrapping `get_project_memory`/`forget_project_memory`; unlike the other
+  stores, the project id itself is screen-local state (`Memory.tsx`'s own
+  `useState`), not held in the store - see
+  `docs/adr/011-memory-center-project-scoped-tasks.md`.

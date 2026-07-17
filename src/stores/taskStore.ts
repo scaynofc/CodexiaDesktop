@@ -46,6 +46,10 @@ export interface Task {
   delegation_depth: number;
   forced_role: string | null;
   simulated: boolean;
+  /** Faz 43 in CodexiaCore: the governed-project-memory scope this task
+   * ran under, `null` when project memory was disabled - see
+   * docs/adr/011-memory-center-project-scoped-tasks.md. */
+  project_id: string | null;
 }
 
 export interface TaskCreated {
@@ -66,7 +70,12 @@ interface TaskStore {
    * src-tauri/src/services/tasks.rs's run_task_list_poll_loop. */
   refreshTasks: () => Promise<void>;
   selectTask: (taskId: string) => Promise<void>;
-  createTask: (goal: string, requireApproval: boolean, simulate: boolean) => Promise<TaskCreated>;
+  createTask: (
+    goal: string,
+    requireApproval: boolean,
+    simulate: boolean,
+    projectId?: string,
+  ) => Promise<TaskCreated>;
   resumeTask: (taskId: string) => Promise<void>;
   cancelTask: (taskId: string) => Promise<void>;
 }
@@ -114,11 +123,18 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     await invoke("watch_task", { taskId });
   },
 
-  createTask: async (goal: string, requireApproval: boolean, simulate: boolean) => {
+  createTask: async (
+    goal: string,
+    requireApproval: boolean,
+    simulate: boolean,
+    projectId?: string,
+  ) => {
+    const trimmed = projectId?.trim();
     const created = await invoke<TaskCreated>("create_task", {
       goal,
       requireApproval,
       simulate,
+      projectId: trimmed ? trimmed : null,
     });
     set({ selectedTaskId: created.task_id, watchedTask: null });
     return created;

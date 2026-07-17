@@ -59,6 +59,10 @@ impl CoreHttpClient {
         self.authorize(self.client.post(format!("{}{path}", self.base_url)))
     }
 
+    pub(super) fn delete_request(&self, path: &str) -> reqwest::RequestBuilder {
+        self.authorize(self.client.delete(format!("{}{path}", self.base_url)))
+    }
+
     /// Builds a GET request with a caller-supplied timeout instead of this
     /// client's blanket [`REQUEST_TIMEOUT`] - needed for the SSE task-events
     /// stream, which must stay open far longer than a normal health/task

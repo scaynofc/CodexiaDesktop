@@ -11,6 +11,7 @@
 
 mod error;
 mod http;
+mod memory;
 mod metrics;
 mod ollama_runtime;
 mod sse;
@@ -18,6 +19,7 @@ mod tasks;
 
 pub use error::BridgeError;
 pub use http::{CoreHttpClient, HealthResponse};
+pub use memory::{ForgetResult, MemoryItem, MemoryItemType};
 pub use metrics::{DailyCostSummary, MetricsSnapshot, ModelHealth, ProviderType};
 pub use ollama_runtime::{OllamaRuntimeModel, OllamaRuntimeStatus};
 pub use sse::{watch_task, TaskEvent};

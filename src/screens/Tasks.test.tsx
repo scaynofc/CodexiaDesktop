@@ -26,6 +26,7 @@ function task(id: string, overrides: Partial<Task> = {}): Task {
     delegation_depth: 0,
     forced_role: null,
     simulated: false,
+    project_id: null,
     ...overrides,
   };
 }
@@ -140,7 +141,33 @@ describe("Tasks", () => {
         goal: "Write a haiku",
         requireApproval: true,
         simulate: false,
+        projectId: null,
       }),
+    );
+  });
+
+  it("submits a trimmed project id when the field is filled in", async () => {
+    invokeMock.mockResolvedValueOnce([]); // get_tasks on mount
+    invokeMock.mockResolvedValueOnce({ task_id: "new-1" }); // create_task
+
+    render(<Tasks />);
+
+    fireEvent.change(screen.getByPlaceholderText("Describe a goal for Codexia to work on..."), {
+      target: { value: "Write a haiku" },
+    });
+    fireEvent.change(
+      screen.getByPlaceholderText("Project id (optional - enables project memory)"),
+      {
+        target: { value: "  proj-1  " },
+      },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Create Task" }));
+
+    await waitFor(() =>
+      expect(invokeMock).toHaveBeenCalledWith(
+        "create_task",
+        expect.objectContaining({ projectId: "proj-1" }),
+      ),
     );
   });
 

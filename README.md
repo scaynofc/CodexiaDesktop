@@ -8,13 +8,16 @@ React.
 Codexia Desktop never runs inference itself. Every model call stays in
 Codexia Core; this app only talks to Core's HTTP/SSE API.
 
-**Status:** Phase 7 (Runtime Center) — Dashboard, Task Center, Timeline,
-Provider Center, and Runtime Center are built; the remaining 4 planned
-screens (Approval Center, Memory Center, Log Center, Settings) appear as
-disabled sidebar items until their own phase lands. See `docs/adr/` for
-the architectural decisions behind this app, and the CodexiaCore repo's
-own `MASTER_ROADMAP_V2.md` / Phase 0 architecture review for the
-cross-repo context this project builds on.
+**Status:** Phase 8 (Memory Center) — Dashboard, Task Center, Timeline,
+Provider Center, Runtime Center, and Memory Center are built; the
+remaining 3 planned screens (Approval Center, Log Center, Settings)
+appear as disabled sidebar items until their own phase lands. Approval
+Center is deliberately deferred, not just unbuilt: CodexiaCore has no
+queryable "pending approval" concept today, so it has no real data to
+show yet - see `docs/adr/011-memory-center-project-scoped-tasks.md`'s
+Consequences. See `docs/adr/` for the architectural decisions behind this
+app, and the CodexiaCore repo's own `MASTER_ROADMAP_V2.md` / Phase 0
+architecture review for the cross-repo context this project builds on.
 
 ## Architecture
 

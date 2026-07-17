@@ -87,6 +87,11 @@ pub struct Task {
     pub forced_role: Option<String>,
     #[serde(default)]
     pub simulated: bool,
+    /// Faz 43 in CodexiaCore: the governed-project-memory scope this task
+    /// ran under, `None` when project memory was disabled - see
+    /// docs/adr/011-memory-center-project-scoped-tasks.md.
+    #[serde(default)]
+    pub project_id: Option<String>,
 }
 
 /// What CodexiaCore returns from `POST /tasks` and `POST /tasks/{id}/resume`
@@ -113,6 +118,12 @@ struct CreateTaskRequest<'a> {
     /// request until the entire task finishes, which a GUI must never do.
     background: bool,
     simulate: bool,
+    /// Faz 43 in CodexiaCore: enables governed project memory for this
+    /// task (CLI: `--project`) - `None` (the default, omitted from every
+    /// pre-existing call) matches project memory being disabled, same as
+    /// the CLI's `--project` being left unset.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    project_id: Option<&'a str>,
 }
 
 impl CoreHttpClient {
@@ -134,12 +145,14 @@ impl CoreHttpClient {
         goal: &str,
         require_approval: bool,
         simulate: bool,
+        project_id: Option<&str>,
     ) -> Result<TaskCreated, BridgeError> {
         let body = CreateTaskRequest {
             goal,
             require_approval,
             background: true,
             simulate,
+            project_id,
         };
         let response = self.post_request("/tasks").json(&body).send().await?;
         Self::json_or_status_error(response).await
@@ -241,6 +254,53 @@ mod tests {
         );
         assert_eq!(task.steps[1].depends_on, vec![1]);
         assert!(!task.simulated);
+        // Older-shape JSON (no project_id key at all, Faz 43 in CodexiaCore
+        // predates it) still deserializes, defaulting to None.
+        assert_eq!(task.project_id, None);
+    }
+
+    #[test]
+    fn deserializes_a_task_with_a_project_id_set() {
+        let raw = r#"{
+            "id": "task-1", "goal": "g", "state": "done", "steps": [], "error": null,
+            "created_at": "c", "updated_at": "u", "validation_usage": null, "plan_revisions": 0,
+            "parent_task_id": null, "delegation_depth": 0, "forced_role": null, "simulated": false,
+            "project_id": "proj-1"
+        }"#;
+
+        let task: Task = serde_json::from_str(raw).unwrap();
+
+        assert_eq!(task.project_id, Some("proj-1".to_string()));
+    }
+
+    #[test]
+    fn create_task_request_omits_project_id_when_none() {
+        let body = CreateTaskRequest {
+            goal: "g",
+            require_approval: false,
+            background: true,
+            simulate: false,
+            project_id: None,
+        };
+
+        let json = serde_json::to_value(&body).unwrap();
+
+        assert!(!json.as_object().unwrap().contains_key("project_id"));
+    }
+
+    #[test]
+    fn create_task_request_includes_project_id_when_set() {
+        let body = CreateTaskRequest {
+            goal: "g",
+            require_approval: false,
+            background: true,
+            simulate: false,
+            project_id: Some("proj-1"),
+        };
+
+        let json = serde_json::to_value(&body).unwrap();
+
+        assert_eq!(json["project_id"], "proj-1");
     }
 
     #[test]
