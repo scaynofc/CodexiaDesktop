@@ -15,6 +15,7 @@ the Python runtime this app connects to).
 | [005](005-connection-state-machine.md)       | Core Bridge connection state machine and restart detection           |
 | [006](006-application-shell-navigation.md)   | Application Shell routing, nav manifest, disabled-vs-stub screens    |
 | [007](007-task-center-polling-and-sse.md)    | Task Center: hand-rolled SSE, hybrid refresh, bounded resume retry   |
+| [008](008-timeline-derived-view.md)          | Timeline: purely-derived view over existing task state, no new API   |
 
 New ADRs go here as `0NN-short-slug.md`, numbered sequentially, added to
 this table.

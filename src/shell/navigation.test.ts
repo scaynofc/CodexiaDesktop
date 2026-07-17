@@ -12,9 +12,9 @@ describe("NAV_ITEMS", () => {
     expect(new Set(paths).size).toBe(paths.length);
   });
 
-  it("has exactly the enabled items built so far: Dashboard and Task Center", () => {
+  it("has exactly the enabled items built so far: Dashboard, Task Center, and Timeline", () => {
     const enabledIds = NAV_ITEMS.filter((item) => item.enabled).map((item) => item.id);
-    expect(enabledIds).toEqual(["dashboard", "tasks"]);
+    expect(enabledIds).toEqual(["dashboard", "tasks", "timeline"]);
   });
 
   it("gives Dashboard the root path", () => {
@@ -27,6 +27,7 @@ describe("findNavItemByPath", () => {
   it("finds the item matching a given path", () => {
     expect(findNavItemByPath("/")?.id).toBe("dashboard");
     expect(findNavItemByPath("/tasks")?.id).toBe("tasks");
+    expect(findNavItemByPath("/timeline")?.id).toBe("timeline");
   });
 
   it("returns undefined for an unregistered path", () => {

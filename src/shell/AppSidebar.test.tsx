@@ -51,13 +51,13 @@ describe("AppSidebar", () => {
   it("shows a tooltip explaining why a disabled item isn't clickable, on focus", async () => {
     renderSidebar();
 
-    const timelineButton = screen.getByRole("button", { name: /Timeline/ });
-    fireEvent.focus(timelineButton);
+    const providersButton = screen.getByRole("button", { name: /Provider Center/ });
+    fireEvent.focus(providersButton);
 
     await waitFor(() => {
       // Radix renders the tooltip content twice (visible + a visually-hidden
       // a11y duplicate) - assert at least one is present, not exactly one.
-      expect(screen.getAllByText(/Timeline - not built yet/).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Provider Center - not built yet/).length).toBeGreaterThan(0);
     });
   });
 });

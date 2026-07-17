@@ -8,12 +8,13 @@ React.
 Codexia Desktop never runs inference itself. Every model call stays in
 Codexia Core; this app only talks to Core's HTTP/SSE API.
 
-**Status:** Phase 3 (Application Shell) — sidebar navigation and routing
-for all 9 planned screens; Dashboard is the first real one. The other 8
-appear as disabled sidebar items until their own phase lands. See
-`docs/adr/` for the architectural decisions behind this app, and the
-CodexiaCore repo's own `MASTER_ROADMAP_V2.md` / Phase 0 architecture
-review for the cross-repo context this project builds on.
+**Status:** Phase 5 (Timeline) — Dashboard, Task Center, and Timeline are
+built; the remaining 6 planned screens (Provider Center, GPU Center,
+Approval Center, Memory Center, Log Center, Settings) appear as disabled
+sidebar items until their own phase lands. See `docs/adr/` for the
+architectural decisions behind this app, and the CodexiaCore repo's own
+`MASTER_ROADMAP_V2.md` / Phase 0 architecture review for the cross-repo
+context this project builds on.
 
 ## Architecture
 
