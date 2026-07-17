@@ -8,13 +8,13 @@ React.
 Codexia Desktop never runs inference itself. Every model call stays in
 Codexia Core; this app only talks to Core's HTTP/SSE API.
 
-**Status:** Phase 5 (Timeline) — Dashboard, Task Center, and Timeline are
-built; the remaining 6 planned screens (Provider Center, GPU Center,
-Approval Center, Memory Center, Log Center, Settings) appear as disabled
-sidebar items until their own phase lands. See `docs/adr/` for the
-architectural decisions behind this app, and the CodexiaCore repo's own
-`MASTER_ROADMAP_V2.md` / Phase 0 architecture review for the cross-repo
-context this project builds on.
+**Status:** Phase 6 (Provider Center) — Dashboard, Task Center, Timeline,
+and Provider Center are built; the remaining 5 planned screens (GPU
+Center, Approval Center, Memory Center, Log Center, Settings) appear as
+disabled sidebar items until their own phase lands. See `docs/adr/` for
+the architectural decisions behind this app, and the CodexiaCore repo's
+own `MASTER_ROADMAP_V2.md` / Phase 0 architecture review for the
+cross-repo context this project builds on.
 
 ## Architecture
 
@@ -78,7 +78,8 @@ src-tauri/src/
 src/
 ├── screens/       Presentation - render-only (Dashboard, Tasks, ...)
 ├── shell/         Sidebar, header, and the nav manifest routes/sidebar both read
-├── stores/        Zustand stores fed by Tauri events (not by direct fetch)
+├── stores/        Zustand stores - most fed by Tauri events, some by an explicit fetch action
+├── lib/           Pure, unit-tested formatting/derivation helpers used by screens
 ├── components/ui/ shadcn/ui components (vendored, regenerated via `npx shadcn add`)
 └── App.tsx        Shell composition: router + sidebar + header + routed screen
 ```

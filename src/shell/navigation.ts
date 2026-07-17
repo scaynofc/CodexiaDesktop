@@ -42,7 +42,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { id: "dashboard", label: "Dashboard", path: "/", icon: LayoutDashboard, enabled: true },
   { id: "tasks", label: "Task Center", path: "/tasks", icon: ListTodo, enabled: true },
   { id: "timeline", label: "Timeline", path: "/timeline", icon: History, enabled: true },
-  { id: "providers", label: "Provider Center", path: "/providers", icon: Cpu, enabled: false },
+  { id: "providers", label: "Provider Center", path: "/providers", icon: Cpu, enabled: true },
   { id: "gpu", label: "GPU Center", path: "/gpu", icon: Gauge, enabled: false },
   {
     id: "approvals",

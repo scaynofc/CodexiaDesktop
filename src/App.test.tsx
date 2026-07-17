@@ -44,8 +44,8 @@ describe("App shell", () => {
   it("does not let a disabled item navigate anywhere", () => {
     render(<App />);
 
-    const providersButton = screen.getByRole("button", { name: /Provider Center/ });
-    expect(providersButton).toBeDisabled();
+    const gpuButton = screen.getByRole("button", { name: /GPU Center/ });
+    expect(gpuButton).toBeDisabled();
     // Still on Dashboard - clicking (were it possible) has nowhere to go.
     expect(screen.getByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
   });

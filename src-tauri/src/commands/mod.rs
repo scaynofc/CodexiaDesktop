@@ -6,8 +6,9 @@ use std::sync::Arc;
 
 use tauri::{AppHandle, Emitter, State};
 
-use crate::core_bridge::{CancelResult, CoreHttpClient, Task, TaskCreated};
+use crate::core_bridge::{CancelResult, CoreHttpClient, MetricsSnapshot, Task, TaskCreated};
 use crate::services::connection::{ConnectionStatus, SharedConnectionStatus};
+use crate::services::metrics;
 use crate::services::tasks::{self, SharedTaskList, SharedTaskWatchHandle, SharedWatchedTask};
 
 /// Reads the current connection status synchronously - lets the frontend
@@ -183,6 +184,20 @@ pub async fn resume_task(
     )
     .await
     .map_err(|error| error.to_string())
+}
+
+/// Fetches CodexiaCore's metrics snapshot fresh - called both on Provider
+/// Center's mount and by its "Refresh" button (see `services::metrics`).
+/// Unlike `get_tasks`, there's no synchronous state-read counterpart: no
+/// background poll loop keeps a metrics snapshot warm, so every read is
+/// this same round trip.
+#[tauri::command]
+pub async fn get_metrics(
+    client: State<'_, Arc<CoreHttpClient>>,
+) -> Result<MetricsSnapshot, String> {
+    metrics::fetch_metrics(client.inner())
+        .await
+        .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
