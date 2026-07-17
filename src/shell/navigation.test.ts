@@ -12,7 +12,7 @@ describe("NAV_ITEMS", () => {
     expect(new Set(paths).size).toBe(paths.length);
   });
 
-  it("has exactly the enabled items built so far: Dashboard, Task Center, Timeline, Provider Center, Runtime Center, Memory Center, and Log Center", () => {
+  it("has exactly the enabled items built so far: Dashboard, Task Center, Timeline, Provider Center, Runtime Center, Memory Center, Log Center, and Settings", () => {
     const enabledIds = NAV_ITEMS.filter((item) => item.enabled).map((item) => item.id);
     expect(enabledIds).toEqual([
       "dashboard",
@@ -22,6 +22,7 @@ describe("NAV_ITEMS", () => {
       "runtime",
       "memory",
       "logs",
+      "settings",
     ]);
   });
 
@@ -40,6 +41,7 @@ describe("findNavItemByPath", () => {
     expect(findNavItemByPath("/runtime")?.id).toBe("runtime");
     expect(findNavItemByPath("/memory")?.id).toBe("memory");
     expect(findNavItemByPath("/logs")?.id).toBe("logs");
+    expect(findNavItemByPath("/settings")?.id).toBe("settings");
   });
 
   it("returns undefined for an unregistered path", () => {

@@ -14,10 +14,10 @@ use std::sync::Arc;
 use tauri::{Emitter, Manager};
 
 use crate::core_bridge::CoreHttpClient;
+use crate::services::config;
 use crate::services::connection::{
     run_connection_loop, run_supervised, ConnectionStatus, SUPERVISOR_RESTART_DELAY,
 };
-use crate::services::default_core_base_url;
 use crate::services::tasks::{
     run_task_list_poll_loop, shared_task_list_initial, shared_task_watch_handle_initial,
     shared_watched_task_initial,
@@ -40,6 +40,9 @@ pub fn run() {
             commands::get_project_memory,
             commands::forget_project_memory,
             commands::get_events,
+            commands::get_config,
+            commands::save_config,
+            commands::test_connection,
         ])
         .setup(|app| {
             let shared_status = ConnectionStatus::shared_initial();
@@ -49,7 +52,20 @@ pub fn run() {
             // the real bug that shape caused).
             app.manage(shared_status.clone());
 
-            let client = Arc::new(CoreHttpClient::new(default_core_base_url()));
+            // Loaded synchronously, before the client below, so the very
+            // first request this app ever makes already uses a saved
+            // Core URL/token - not a default that flips a moment later
+            // (see docs/adr/013-settings-local-desktop-configuration.md).
+            // A missing or corrupt config file both fall back to
+            // `Config::default()` rather than failing app startup.
+            let config_path = config::resolve_config_path(app.handle())?;
+            let loaded_config = config::load_config_from(&config_path);
+            app.manage(config::shared_config(loaded_config.clone()));
+
+            let client = Arc::new(
+                CoreHttpClient::new(loaded_config.core_url)
+                    .with_bearer_token(loaded_config.auth_token),
+            );
             app.manage(client.clone());
 
             let shared_task_list = shared_task_list_initial();

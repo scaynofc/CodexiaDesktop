@@ -10,6 +10,7 @@ use crate::core_bridge::{
     CancelResult, CoreHttpClient, MemoryItem, MetricsSnapshot, OllamaRuntimeStatus, SystemEvent,
     Task, TaskCreated,
 };
+use crate::services::config::{self, Config, SharedConfig};
 use crate::services::connection::{ConnectionStatus, SharedConnectionStatus};
 use crate::services::events;
 use crate::services::memory;
@@ -255,6 +256,54 @@ pub async fn get_events(
 ) -> Result<Vec<SystemEvent>, String> {
     events::fetch_events(client.inner(), limit)
         .await
+        .map_err(|error| error.to_string())
+}
+
+/// Reads the currently-loaded config synchronously - populated once at
+/// startup from disk (`services::config::load_config_from`, called in
+/// `lib.rs`'s `setup()`), so this never touches the filesystem itself
+/// (matches [`get_connection_status`]/[`get_tasks`]'s "cached, synchronous
+/// read of state something else already loaded" shape).
+#[tauri::command]
+pub fn get_config(state: State<SharedConfig>) -> Config {
+    state.read().expect("config lock poisoned").clone()
+}
+
+/// Persists a full, new config to disk, updates the in-memory cache, and
+/// applies the connection-relevant fields (`core_url`/`auth_token`) to the
+/// live `CoreHttpClient` immediately - no app restart needed. Always saves
+/// the whole `Config` object rather than a partial patch: Settings has
+/// exactly one save action for its one form, so there is no case where
+/// only some fields are known at save time (see
+/// docs/adr/013-settings-local-desktop-configuration.md).
+#[tauri::command]
+pub fn save_config(
+    new_config: Config,
+    app: AppHandle,
+    state: State<SharedConfig>,
+    client: State<Arc<CoreHttpClient>>,
+) -> Result<Config, String> {
+    let path = config::resolve_config_path(&app)?;
+    config::save_config_to(&path, &new_config)?;
+
+    *state.write().expect("config lock poisoned") = new_config.clone();
+    client.set_connection(new_config.core_url.clone(), new_config.auth_token.clone());
+
+    Ok(new_config)
+}
+
+/// Probes an arbitrary Core URL/token pair with a throwaway client -
+/// deliberately never touches the live, shared `CoreHttpClient` (see
+/// `CoreHttpClient::with_bearer_token`'s docstring), so Settings can let a
+/// user try a value before committing to it without ever putting the app's
+/// real connection into a half-tested state.
+#[tauri::command]
+pub async fn test_connection(core_url: String, auth_token: Option<String>) -> Result<(), String> {
+    let probe = CoreHttpClient::new(core_url).with_bearer_token(auth_token);
+    probe
+        .get_health()
+        .await
+        .map(|_| ())
         .map_err(|error| error.to_string())
 }
 

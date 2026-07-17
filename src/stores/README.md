@@ -31,3 +31,12 @@ store reactively.
 - `eventsStore.ts` (Phase 9) - same shape as `metricsStore.ts`/
   `runtimeStore.ts`, a single `fetchEvents(limit?)` action wrapping
   `get_events` - see `docs/adr/012-log-center-derived-events.md`.
+- `settingsStore.ts` (Phase 11) - `loadConfig()`/`saveConfig(config)`
+  wrapping `get_config`/`save_config`, plus a separate
+  `testConnection(coreUrl, authToken)` wrapping `test_connection` with its
+  own `testState`/`testError` pair (never conflated with a load/save
+  failure). Has an `init()` like `taskStore`/`connectionStore` - called
+  from `App.tsx`'s root effect, not just `Settings.tsx`'s own mount, so
+  `config.default_project_id` reaches Task Center whether or not the user
+  ever opens Settings - see
+  `docs/adr/013-settings-local-desktop-configuration.md`.

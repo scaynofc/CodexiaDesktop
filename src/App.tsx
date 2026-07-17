@@ -9,28 +9,36 @@ import Log from "@/screens/Log";
 import Memory from "@/screens/Memory";
 import Providers from "@/screens/Providers";
 import Runtime from "@/screens/Runtime";
+import Settings from "@/screens/Settings";
 import Tasks from "@/screens/Tasks";
 import Timeline from "@/screens/Timeline";
 import { useConnectionStore } from "@/stores/connectionStore";
+import { useSettingsStore } from "@/stores/settingsStore";
 
 /**
  * Phase 3 (Application Shell) + Phase 4 (Task Center) + Phase 5 (Timeline)
  * + Phase 6 (Provider Center) + Phase 7 (Runtime Center) + Phase 8
- * (Memory Center) + Phase 9 (Log Center). `MemoryRouter` (not
- * Browser/HashRouter) - a desktop app has no meaningful URL bar, and
+ * (Memory Center) + Phase 9 (Log Center) + Phase 11 (Settings, out of
+ * numeric order - Approval Center's Phase 10 slot remains deferred, see
+ * docs/adr/013-settings-local-desktop-configuration.md). `MemoryRouter`
+ * (not Browser/HashRouter) - a desktop app has no meaningful URL bar, and
  * Tauri's asset protocol has no SPA-fallback for a deep path on reload -
- * see docs/adr/006-application-shell-navigation.md. Dashboard, Task
- * Center, Timeline, Provider Center, Runtime Center, Memory Center, and
- * Log Center have registered `<Route>`s; every other planned screen (see
+ * see docs/adr/006-application-shell-navigation.md. Every screen except
+ * Approval Center has a registered `<Route>`; Approval Center (see
  * src/shell/navigation.ts) renders as a disabled sidebar item until its
  * own phase lands.
  */
 function App() {
   const init = useConnectionStore((state) => state.init);
+  const initSettings = useSettingsStore((state) => state.init);
 
   useEffect(() => {
     void init();
-  }, [init]);
+    // Loaded here, not just on Settings' own mount, so
+    // `config.default_project_id` is available to Task Center (and any
+    // future screen) regardless of whether the user ever opens Settings.
+    void initSettings();
+  }, [init, initSettings]);
 
   return (
     <MemoryRouter>
@@ -48,6 +56,7 @@ function App() {
                 <Route path="/runtime" element={<Runtime />} />
                 <Route path="/memory" element={<Memory />} />
                 <Route path="/logs" element={<Log />} />
+                <Route path="/settings" element={<Settings />} />
               </Routes>
             </main>
           </SidebarInset>

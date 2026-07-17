@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useSettingsStore } from "@/stores/settingsStore";
 import { useTaskStore, type Task, type TaskState } from "@/stores/taskStore";
 
 const STATE_BADGE_VARIANT: Record<TaskState, "default" | "secondary" | "destructive" | "outline"> =
@@ -17,9 +18,14 @@ const STATE_BADGE_VARIANT: Record<TaskState, "default" | "secondary" | "destruct
 
 interface NewTaskFormProps {
   onCreate: (goal: string, requireApproval: boolean, simulate: boolean, projectId: string) => void;
+  /** From Settings' `default_project_id` (Phase 11) - used when the user
+   * leaves this form's own project id field blank, never overriding an
+   * explicit (including explicitly cleared) value. Empty string means "no
+   * default configured," same as this form's own untouched field. */
+  defaultProjectId: string;
 }
 
-function NewTaskForm({ onCreate }: NewTaskFormProps) {
+function NewTaskForm({ onCreate, defaultProjectId }: NewTaskFormProps) {
   const [goal, setGoal] = useState("");
   const [requireApproval, setRequireApproval] = useState(false);
   const [simulate, setSimulate] = useState(false);
@@ -32,7 +38,7 @@ function NewTaskForm({ onCreate }: NewTaskFormProps) {
         event.preventDefault();
         const trimmed = goal.trim();
         if (!trimmed) return;
-        onCreate(trimmed, requireApproval, simulate, projectId);
+        onCreate(trimmed, requireApproval, simulate, projectId.trim() || defaultProjectId);
         setGoal("");
       }}
     >
@@ -47,7 +53,11 @@ function NewTaskForm({ onCreate }: NewTaskFormProps) {
         type="text"
         value={projectId}
         onChange={(event) => setProjectId(event.target.value)}
-        placeholder="Project id (optional - enables project memory)"
+        placeholder={
+          defaultProjectId
+            ? `Project id (default: ${defaultProjectId})`
+            : "Project id (optional - enables project memory)"
+        }
         className="w-full rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
       />
       <label className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -137,6 +147,7 @@ function Tasks() {
   const createTask = useTaskStore((state) => state.createTask);
   const resumeTask = useTaskStore((state) => state.resumeTask);
   const cancelTask = useTaskStore((state) => state.cancelTask);
+  const defaultProjectId = useSettingsStore((state) => state.config?.default_project_id ?? "");
 
   useEffect(() => {
     void init();
@@ -154,6 +165,7 @@ function Tasks() {
           onCreate={(goal, requireApproval, simulate, projectId) =>
             void createTask(goal, requireApproval, simulate, projectId)
           }
+          defaultProjectId={defaultProjectId}
         />
 
         <div className="flex flex-col gap-1 overflow-y-auto">

@@ -53,7 +53,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
   { id: "memory", label: "Memory Center", path: "/memory", icon: Boxes, enabled: true },
   { id: "logs", label: "Log Center", path: "/logs", icon: ScrollText, enabled: true },
-  { id: "settings", label: "Settings", path: "/settings", icon: SettingsIcon, enabled: false },
+  { id: "settings", label: "Settings", path: "/settings", icon: SettingsIcon, enabled: true },
 ];
 
 /** Looks up the nav item whose path matches a location's pathname, for the

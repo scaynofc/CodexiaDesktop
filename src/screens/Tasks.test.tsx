@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Tasks from "./Tasks";
+import { useSettingsStore, type Config } from "@/stores/settingsStore";
 import { __resetTaskStoreForTests, useTaskStore, type Task } from "@/stores/taskStore";
 
 const { invokeMock, listenMock } = vi.hoisted(() => ({
@@ -34,6 +35,13 @@ function task(id: string, overrides: Partial<Task> = {}): Task {
 beforeEach(() => {
   __resetTaskStoreForTests();
   useTaskStore.setState({ tasks: [], watchedTask: null, selectedTaskId: null });
+  useSettingsStore.setState({
+    config: null,
+    fetchState: "idle",
+    error: null,
+    testState: "idle",
+    testError: null,
+  });
   invokeMock.mockReset();
   listenMock.mockReset();
   invokeMock.mockResolvedValue([]);
@@ -177,5 +185,64 @@ describe("Tasks", () => {
     fireEvent.click(screen.getByRole("button", { name: "Create Task" }));
 
     expect(invokeMock).not.toHaveBeenCalledWith("create_task", expect.anything());
+  });
+
+  it("shows Settings' default project id in the placeholder and applies it when the field is left blank", async () => {
+    useSettingsStore.setState({
+      config: {
+        core_url: "http://127.0.0.1:8000",
+        auth_token: null,
+        default_project_id: "default-proj",
+        debug_mode: false,
+      } satisfies Config,
+    });
+    invokeMock.mockResolvedValueOnce([]); // get_tasks on mount
+    invokeMock.mockResolvedValueOnce({ task_id: "new-1" }); // create_task
+
+    render(<Tasks />);
+
+    expect(screen.getByPlaceholderText("Project id (default: default-proj)")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText("Describe a goal for Codexia to work on..."), {
+      target: { value: "Write a haiku" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create Task" }));
+
+    await waitFor(() =>
+      expect(invokeMock).toHaveBeenCalledWith(
+        "create_task",
+        expect.objectContaining({ projectId: "default-proj" }),
+      ),
+    );
+  });
+
+  it("prefers an explicitly typed project id over Settings' default", async () => {
+    useSettingsStore.setState({
+      config: {
+        core_url: "http://127.0.0.1:8000",
+        auth_token: null,
+        default_project_id: "default-proj",
+        debug_mode: false,
+      } satisfies Config,
+    });
+    invokeMock.mockResolvedValueOnce([]); // get_tasks on mount
+    invokeMock.mockResolvedValueOnce({ task_id: "new-1" }); // create_task
+
+    render(<Tasks />);
+
+    fireEvent.change(screen.getByPlaceholderText("Describe a goal for Codexia to work on..."), {
+      target: { value: "Write a haiku" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Project id (default: default-proj)"), {
+      target: { value: "explicit-proj" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create Task" }));
+
+    await waitFor(() =>
+      expect(invokeMock).toHaveBeenCalledWith(
+        "create_task",
+        expect.objectContaining({ projectId: "explicit-proj" }),
+      ),
+    );
   });
 });
