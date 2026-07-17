@@ -4,6 +4,7 @@
 
 pub mod connection;
 pub mod metrics;
+pub mod runtime;
 pub mod tasks;
 
 /// Where Core is expected to be running - a plain default for now (matches

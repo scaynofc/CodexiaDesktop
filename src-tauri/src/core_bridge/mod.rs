@@ -12,11 +12,13 @@
 mod error;
 mod http;
 mod metrics;
+mod ollama_runtime;
 mod sse;
 mod tasks;
 
 pub use error::BridgeError;
 pub use http::{CoreHttpClient, HealthResponse};
 pub use metrics::{DailyCostSummary, MetricsSnapshot, ModelHealth, ProviderType};
+pub use ollama_runtime::{OllamaRuntimeModel, OllamaRuntimeStatus};
 pub use sse::{watch_task, TaskEvent};
 pub use tasks::{CancelResult, Task, TaskCreated, TaskState, TaskStep, TimelineEvent, Usage};

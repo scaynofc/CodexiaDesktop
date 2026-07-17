@@ -1,16 +1,16 @@
 # Codexia Desktop
 
 A native control center for the [Codexia Core](../CodexiaCore) runtime —
-Dashboard, Task Center, Timeline, Provider Center, GPU Center, Approval
+Dashboard, Task Center, Timeline, Provider Center, Runtime Center, Approval
 Center, Memory Center, Log Center, and Settings, built on Tauri v2 + Rust +
 React.
 
 Codexia Desktop never runs inference itself. Every model call stays in
 Codexia Core; this app only talks to Core's HTTP/SSE API.
 
-**Status:** Phase 6 (Provider Center) — Dashboard, Task Center, Timeline,
-and Provider Center are built; the remaining 5 planned screens (GPU
-Center, Approval Center, Memory Center, Log Center, Settings) appear as
+**Status:** Phase 7 (Runtime Center) — Dashboard, Task Center, Timeline,
+Provider Center, and Runtime Center are built; the remaining 4 planned
+screens (Approval Center, Memory Center, Log Center, Settings) appear as
 disabled sidebar items until their own phase lands. See `docs/adr/` for
 the architectural decisions behind this app, and the CodexiaCore repo's
 own `MASTER_ROADMAP_V2.md` / Phase 0 architecture review for the

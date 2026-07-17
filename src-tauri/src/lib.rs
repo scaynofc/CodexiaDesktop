@@ -36,6 +36,7 @@ pub fn run() {
             commands::resume_task,
             commands::cancel_task,
             commands::get_metrics,
+            commands::get_ollama_runtime,
         ])
         .setup(|app| {
             let shared_status = ConnectionStatus::shared_initial();

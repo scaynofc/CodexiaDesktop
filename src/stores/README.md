@@ -20,3 +20,6 @@ store reactively.
   `get_metrics`, no event subscription at all: CodexiaCore has no
   metrics-changed notification, so there's nothing to listen for - see
   `docs/adr/009-provider-center-metrics-snapshot.md`.
+- `runtimeStore.ts` (Phase 7) - same shape as `metricsStore.ts`, a single
+  `fetchRuntime()` action wrapping `get_ollama_runtime` - see
+  `docs/adr/010-runtime-center-ollama-proxy.md`.

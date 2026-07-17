@@ -6,9 +6,12 @@ use std::sync::Arc;
 
 use tauri::{AppHandle, Emitter, State};
 
-use crate::core_bridge::{CancelResult, CoreHttpClient, MetricsSnapshot, Task, TaskCreated};
+use crate::core_bridge::{
+    CancelResult, CoreHttpClient, MetricsSnapshot, OllamaRuntimeStatus, Task, TaskCreated,
+};
 use crate::services::connection::{ConnectionStatus, SharedConnectionStatus};
 use crate::services::metrics;
+use crate::services::runtime;
 use crate::services::tasks::{self, SharedTaskList, SharedTaskWatchHandle, SharedWatchedTask};
 
 /// Reads the current connection status synchronously - lets the frontend
@@ -196,6 +199,18 @@ pub async fn get_metrics(
     client: State<'_, Arc<CoreHttpClient>>,
 ) -> Result<MetricsSnapshot, String> {
     metrics::fetch_metrics(client.inner())
+        .await
+        .map_err(|error| error.to_string())
+}
+
+/// Fetches Ollama's runtime status (loaded models/VRAM) fresh - called
+/// both on Runtime Center's mount and by its "Refresh" button, same shape
+/// as `get_metrics` (see `services::runtime`).
+#[tauri::command]
+pub async fn get_ollama_runtime(
+    client: State<'_, Arc<CoreHttpClient>>,
+) -> Result<OllamaRuntimeStatus, String> {
+    runtime::fetch_ollama_runtime(client.inner())
         .await
         .map_err(|error| error.to_string())
 }
