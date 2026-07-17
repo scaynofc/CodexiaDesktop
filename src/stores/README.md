@@ -28,3 +28,6 @@ store reactively.
   stores, the project id itself is screen-local state (`Memory.tsx`'s own
   `useState`), not held in the store - see
   `docs/adr/011-memory-center-project-scoped-tasks.md`.
+- `eventsStore.ts` (Phase 9) - same shape as `metricsStore.ts`/
+  `runtimeStore.ts`, a single `fetchEvents(limit?)` action wrapping
+  `get_events` - see `docs/adr/012-log-center-derived-events.md`.

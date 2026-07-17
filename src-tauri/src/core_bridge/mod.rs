@@ -10,6 +10,7 @@
 //! docs/adr/007-task-center-polling-and-sse.md for why.
 
 mod error;
+mod events;
 mod http;
 mod memory;
 mod metrics;
@@ -18,6 +19,7 @@ mod sse;
 mod tasks;
 
 pub use error::BridgeError;
+pub use events::{SystemEvent, SystemEventSource, SystemEventType};
 pub use http::{CoreHttpClient, HealthResponse};
 pub use memory::{ForgetResult, MemoryItem, MemoryItemType};
 pub use metrics::{DailyCostSummary, MetricsSnapshot, ModelHealth, ProviderType};

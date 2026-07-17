@@ -19,6 +19,7 @@ the Python runtime this app connects to).
 | [009](009-provider-center-metrics-snapshot.md)   | Provider Center: one-shot metrics fetch, no poll loop, new `GET /metrics`                 |
 | [010](010-runtime-center-ollama-proxy.md)        | Runtime Center (was "GPU Center"): Ollama state via a Core proxy, not a direct connection |
 | [011](011-memory-center-project-scoped-tasks.md) | Memory Center, shipped with `project_id` Task scoping so it has real data                 |
+| [012](012-log-center-derived-events.md)          | Log Center: derived events from persisted TimelineEvents/ModelAttempts, not a raw log viewer |
 
 New ADRs go here as `0NN-short-slug.md`, numbered sequentially, added to
 this table.

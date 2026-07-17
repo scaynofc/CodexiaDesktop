@@ -39,6 +39,7 @@ pub fn run() {
             commands::get_ollama_runtime,
             commands::get_project_memory,
             commands::forget_project_memory,
+            commands::get_events,
         ])
         .setup(|app| {
             let shared_status = ConnectionStatus::shared_initial();

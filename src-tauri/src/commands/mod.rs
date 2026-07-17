@@ -7,10 +7,11 @@ use std::sync::Arc;
 use tauri::{AppHandle, Emitter, State};
 
 use crate::core_bridge::{
-    CancelResult, CoreHttpClient, MemoryItem, MetricsSnapshot, OllamaRuntimeStatus, Task,
-    TaskCreated,
+    CancelResult, CoreHttpClient, MemoryItem, MetricsSnapshot, OllamaRuntimeStatus, SystemEvent,
+    Task, TaskCreated,
 };
 use crate::services::connection::{ConnectionStatus, SharedConnectionStatus};
+use crate::services::events;
 use crate::services::memory;
 use crate::services::metrics;
 use crate::services::runtime;
@@ -241,6 +242,18 @@ pub async fn forget_project_memory(
     client: State<'_, Arc<CoreHttpClient>>,
 ) -> Result<Vec<MemoryItem>, String> {
     memory::forget_and_refresh(client.inner(), &project_id, &key)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+/// Fetches CodexiaCore's derived event log fresh - called both on Log
+/// Center's mount and by its "Refresh" button (see `services::events`).
+#[tauri::command]
+pub async fn get_events(
+    limit: u32,
+    client: State<'_, Arc<CoreHttpClient>>,
+) -> Result<Vec<SystemEvent>, String> {
+    events::fetch_events(client.inner(), limit)
         .await
         .map_err(|error| error.to_string())
 }
