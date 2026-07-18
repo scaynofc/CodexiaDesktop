@@ -22,6 +22,10 @@ pub enum SystemEventType {
 pub enum SystemEventSource {
     Task,
     Provider,
+    /// Faz 46 in CodexiaCore: a notable (non-approved) approval decision -
+    /// see docs/adr/020-approval-events-in-log-center.md there and this
+    /// repo's docs/adr/016-approval-queue-desktop-controls.md.
+    Approval,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -93,6 +97,28 @@ mod tests {
         assert_eq!(event.event_type, SystemEventType::Warning);
         assert_eq!(event.source, SystemEventSource::Provider);
         assert_eq!(event.task_id, None);
+    }
+
+    #[test]
+    fn deserializes_an_approval_sourced_warning_event() {
+        let raw = r#"{
+            "timestamp": "2026-07-18T00:00:00+00:00",
+            "type": "warning",
+            "source": "approval",
+            "message": "tool approval rejected (Too dangerous.)",
+            "task_id": "task-1",
+            "metadata": {"approval_id": "appr-1", "status": "rejected"}
+        }"#;
+
+        let event: SystemEvent = serde_json::from_str(raw).unwrap();
+
+        assert_eq!(event.event_type, SystemEventType::Warning);
+        assert_eq!(event.source, SystemEventSource::Approval);
+        assert_eq!(event.task_id.as_deref(), Some("task-1"));
+        assert_eq!(
+            event.metadata.get("status").map(String::as_str),
+            Some("rejected")
+        );
     }
 
     #[test]

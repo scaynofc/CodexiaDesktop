@@ -5,6 +5,7 @@ import {
   approvalStatusBadgeClassName,
   approvalStatusLabel,
   approvalTypeLabel,
+  formatApprovalCountdown,
   formatApprovalPayload,
   formatApprovalTimestamp,
 } from "@/lib/approvals";
@@ -17,15 +18,23 @@ import { useApprovalStore, type Approval } from "@/stores/approvalStore";
  * have. */
 const POLL_INTERVAL_MS = 3000;
 
+/** How often the countdown display ticks - independent of POLL_INTERVAL_MS
+ * above: the approvals list itself only needs to change when the server's
+ * state changes (3s is plenty), but a countdown that only moved every 3s
+ * would look broken/jumpy. See docs/adr/016-approval-queue-desktop-controls.md. */
+const COUNTDOWN_TICK_MS = 1000;
+
 interface ApprovalCardProps {
   approval: Approval;
+  now: Date;
   deciding: boolean;
   onApprove: (reason: string) => void;
   onReject: (reason: string) => void;
 }
 
-function ApprovalCard({ approval, deciding, onApprove, onReject }: ApprovalCardProps) {
+function ApprovalCard({ approval, now, deciding, onApprove, onReject }: ApprovalCardProps) {
   const [reason, setReason] = useState("");
+  const countdown = formatApprovalCountdown(approval.expires_at, now);
 
   return (
     <li className="flex flex-col gap-2 rounded-md border border-border p-3 text-sm">
@@ -34,6 +43,9 @@ function ApprovalCard({ approval, deciding, onApprove, onReject }: ApprovalCardP
         <Badge variant="outline" className={approvalStatusBadgeClassName(approval.status)}>
           {approvalStatusLabel(approval.status)}
         </Badge>
+        {countdown && approval.status === "pending" && (
+          <span className="text-xs text-muted-foreground">{countdown}</span>
+        )}
         <span className="ml-auto text-xs text-muted-foreground">
           {formatApprovalTimestamp(approval.created_at)}
         </span>
@@ -91,7 +103,9 @@ function ApprovalCard({ approval, deciding, onApprove, onReject }: ApprovalCardP
  * `setInterval`, cleared on unmount) - unlike Task Center's always-on
  * background loops, a pending approval is only actionable from this
  * screen, so there's no reason to keep polling once the user navigates
- * away.
+ * away. Each card also shows a live countdown to its `expires_at`, ticking
+ * on its own independent 1s timer - see
+ * docs/adr/016-approval-queue-desktop-controls.md.
  */
 function Approvals() {
   const approvals = useApprovalStore((state) => state.approvals);
@@ -101,12 +115,18 @@ function Approvals() {
   const fetchApprovals = useApprovalStore((state) => state.fetchApprovals);
   const approve = useApprovalStore((state) => state.approve);
   const reject = useApprovalStore((state) => state.reject);
+  const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
     void fetchApprovals();
     const interval = setInterval(() => void fetchApprovals(), POLL_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [fetchApprovals]);
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), COUNTDOWN_TICK_MS);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="flex max-w-2xl flex-col gap-4">
@@ -136,6 +156,7 @@ function Approvals() {
             <ApprovalCard
               key={approval.id}
               approval={approval}
+              now={now}
               deciding={decidingIds.includes(approval.id)}
               onApprove={(reason) => void approve(approval.id, reason || undefined)}
               onReject={(reason) => void reject(approval.id, reason || undefined)}

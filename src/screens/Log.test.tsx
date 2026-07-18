@@ -109,6 +109,26 @@ describe("Log", () => {
     expect(screen.getByText("task cancelled message")).toBeInTheDocument();
   });
 
+  it("filtering by the approval source narrows the visible events", async () => {
+    invokeMock.mockResolvedValueOnce([
+      event({ source: "provider", message: "provider error message" }),
+      event({
+        source: "approval",
+        type: "warning",
+        message: "tool approval rejected (Too dangerous.)",
+      }),
+    ]);
+
+    render(<Log />);
+
+    await waitFor(() => expect(screen.getByText("provider error message")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: "Approval" }));
+
+    expect(screen.queryByText("provider error message")).not.toBeInTheDocument();
+    expect(screen.getByText("tool approval rejected (Too dangerous.)")).toBeInTheDocument();
+  });
+
   it("shows a filtered-empty message distinct from the fully-empty one", async () => {
     invokeMock.mockResolvedValueOnce([event({ type: "error" })]);
 

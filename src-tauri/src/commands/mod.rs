@@ -115,6 +115,7 @@ pub async fn create_task(
     require_approval: bool,
     simulate: bool,
     project_id: Option<String>,
+    enable_approval_queue: bool,
     client: State<'_, Arc<CoreHttpClient>>,
     task_list: State<'_, SharedTaskList>,
     watched: State<'_, SharedWatchedTask>,
@@ -127,6 +128,7 @@ pub async fn create_task(
         require_approval,
         simulate,
         project_id.as_deref(),
+        enable_approval_queue,
         task_list.inner(),
         &{
             let app = app.clone();

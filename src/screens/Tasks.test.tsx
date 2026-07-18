@@ -150,7 +150,28 @@ describe("Tasks", () => {
         requireApproval: true,
         simulate: false,
         projectId: null,
+        enableApprovalQueue: false,
       }),
+    );
+  });
+
+  it("submits enableApprovalQueue when its checkbox is checked", async () => {
+    invokeMock.mockResolvedValueOnce([]); // get_tasks on mount
+    invokeMock.mockResolvedValueOnce({ task_id: "new-1" }); // create_task
+
+    render(<Tasks />);
+
+    fireEvent.change(screen.getByPlaceholderText("Describe a goal for Codexia to work on..."), {
+      target: { value: "Write a haiku" },
+    });
+    fireEvent.click(screen.getByLabelText("Gate tool calls/memory writes through Approval Center"));
+    fireEvent.click(screen.getByRole("button", { name: "Create Task" }));
+
+    await waitFor(() =>
+      expect(invokeMock).toHaveBeenCalledWith(
+        "create_task",
+        expect.objectContaining({ enableApprovalQueue: true }),
+      ),
     );
   });
 

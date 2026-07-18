@@ -168,4 +168,70 @@ describe("Approvals", () => {
       expect(invokeMock).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe("countdown", () => {
+    const COUNTDOWN_TICK_MS = 1000;
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-07-18T12:00:00.000Z"));
+    });
+    afterEach(() => vi.useRealTimers());
+
+    it("shows the remaining time for a pending approval", async () => {
+      invokeMock.mockResolvedValueOnce([approval({ expires_at: "2026-07-18T12:02:00.000Z" })]);
+
+      render(<Approvals />);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+
+      expect(screen.getByText("Expires in 120s")).toBeInTheDocument();
+    });
+
+    it("ticks down every second independently of the poll interval", async () => {
+      invokeMock.mockResolvedValue([approval({ expires_at: "2026-07-18T12:02:00.000Z" })]);
+
+      render(<Approvals />);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(screen.getByText("Expires in 120s")).toBeInTheDocument();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(COUNTDOWN_TICK_MS * 3);
+      });
+
+      expect(screen.getByText("Expires in 117s")).toBeInTheDocument();
+    });
+
+    it("shows Expired once the countdown reaches zero", async () => {
+      invokeMock.mockResolvedValue([approval({ expires_at: "2026-07-18T12:00:02.000Z" })]);
+
+      render(<Approvals />);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(screen.getByText("Expires in 2s")).toBeInTheDocument();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(COUNTDOWN_TICK_MS * 2);
+      });
+
+      expect(screen.getByText("Expired")).toBeInTheDocument();
+    });
+
+    it("does not show a countdown for a decided (non-pending) approval", async () => {
+      invokeMock.mockResolvedValueOnce([
+        approval({ status: "approved", expires_at: "2026-07-18T12:02:00.000Z" }),
+      ]);
+
+      render(<Approvals />);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+
+      expect(screen.queryByText(/Expires in/)).not.toBeInTheDocument();
+    });
+  });
 });

@@ -32,9 +32,10 @@ export function approvalStatusLabel(status: ApprovalStatus): string {
  * Log Center. `GET /approvals/pending` only ever returns `pending` rows in
  * practice, but the map covers every `ApprovalStatus` value so a decided
  * row (e.g. shown briefly before the next poll drops it) never falls
- * through with no styling - `cancelled` (currently unreachable in
- * CodexiaCore, reserved for a future task-cancellation cascade) gets the
- * same neutral treatment as `expired` rather than being left unmapped. */
+ * through with no styling - `cancelled` (reachable since CodexiaCore's
+ * cancel-cascade, see docs/adr/019 there) gets the same neutral treatment
+ * as `expired` rather than a dedicated color, since both mean "nobody
+ * decided this," not a real approve/reject outcome. */
 const STATUS_BADGE_CLASSNAME: Record<ApprovalStatus, string> = {
   pending: "border-amber-500/50 text-amber-600 dark:text-amber-400",
   approved: "border-emerald-500/50 text-emerald-600 dark:text-emerald-400",
@@ -66,4 +67,25 @@ export function formatApprovalTimestamp(timestamp: string): string {
  * that might not exist. */
 export function formatApprovalPayload(payload: Approval["payload"]): string {
   return JSON.stringify(payload, null, 2);
+}
+
+/**
+ * Countdown text for a pending approval's `expires_at` (CodexiaCore's
+ * ApprovalQueue always sets it - settings.approval_timeout_seconds,
+ * 120s by default). `now` is an injected parameter, not `Date.now()`
+ * read internally, so this stays a pure, directly-unit-testable
+ * function - Approvals.tsx supplies a ticking `now` via its own
+ * `setInterval`, separate from the 3s poll interval that refreshes the
+ * approvals list itself (see docs/adr/016-approval-queue-desktop-controls.md).
+ *
+ * Returns `null` for a row with no `expires_at` (defensive - every real
+ * approval has one, but the field is nullable in the model).
+ */
+export function formatApprovalCountdown(expiresAt: string | null, now: Date): string | null {
+  if (!expiresAt) return null;
+  const expiresAtMs = new Date(expiresAt).getTime();
+  if (Number.isNaN(expiresAtMs)) return null;
+
+  const remainingSeconds = Math.round((expiresAtMs - now.getTime()) / 1000);
+  return remainingSeconds > 0 ? `Expires in ${remainingSeconds}s` : "Expired";
 }

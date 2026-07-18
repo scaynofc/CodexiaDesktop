@@ -255,11 +255,18 @@ pub async fn create_task_and_refresh(
     require_approval: bool,
     simulate: bool,
     project_id: Option<&str>,
+    enable_approval_queue: bool,
     task_list: &SharedTaskList,
     on_list_change: &impl Fn(&[Task]),
 ) -> Result<core_bridge::TaskCreated, BridgeError> {
     let created = client
-        .create_task(goal, require_approval, simulate, project_id)
+        .create_task(
+            goal,
+            require_approval,
+            simulate,
+            project_id,
+            enable_approval_queue,
+        )
         .await?;
     refresh_task_list(client, task_list, on_list_change).await?;
     Ok(created)

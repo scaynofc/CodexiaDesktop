@@ -15,7 +15,7 @@ import {
 import { useEventsStore, type SystemEvent } from "@/stores/eventsStore";
 
 const TYPE_FILTERS: EventTypeFilter[] = ["all", "error", "warning", "info"];
-const SOURCE_FILTERS: EventSourceFilter[] = ["all", "task", "provider"];
+const SOURCE_FILTERS: EventSourceFilter[] = ["all", "task", "provider", "approval"];
 
 interface EventDetailProps {
   event: SystemEvent;

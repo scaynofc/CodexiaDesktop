@@ -124,6 +124,16 @@ struct CreateTaskRequest<'a> {
     /// the CLI's `--project` being left unset.
     #[serde(skip_serializing_if = "Option::is_none")]
     project_id: Option<&'a str>,
+    /// Approval System phase in CodexiaCore: gates individual tool
+    /// calls/memory writes through the Approval Center instead of denying
+    /// them outright, while execution continues - a different,
+    /// independently-usable gate from `require_approval` above (which
+    /// blocks the whole task up front). Always sent (matching
+    /// `require_approval`/`simulate`'s own plain-bool shape, not
+    /// `Option`) - `false` is CodexiaCore's own default for an omitted
+    /// field, so sending it explicitly changes nothing for a caller that
+    /// leaves the new Approval Center checkbox unchecked.
+    enable_approval_queue: bool,
 }
 
 impl CoreHttpClient {
@@ -140,12 +150,14 @@ impl CoreHttpClient {
         Self::json_or_status_error(response).await
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_task(
         &self,
         goal: &str,
         require_approval: bool,
         simulate: bool,
         project_id: Option<&str>,
+        enable_approval_queue: bool,
     ) -> Result<TaskCreated, BridgeError> {
         let body = CreateTaskRequest {
             goal,
@@ -153,6 +165,7 @@ impl CoreHttpClient {
             background: true,
             simulate,
             project_id,
+            enable_approval_queue,
         };
         let response = self.post_request("/tasks").json(&body).send().await?;
         Self::json_or_status_error(response).await
@@ -281,6 +294,7 @@ mod tests {
             background: true,
             simulate: false,
             project_id: None,
+            enable_approval_queue: false,
         };
 
         let json = serde_json::to_value(&body).unwrap();
@@ -296,11 +310,28 @@ mod tests {
             background: true,
             simulate: false,
             project_id: Some("proj-1"),
+            enable_approval_queue: false,
         };
 
         let json = serde_json::to_value(&body).unwrap();
 
         assert_eq!(json["project_id"], "proj-1");
+    }
+
+    #[test]
+    fn create_task_request_always_includes_enable_approval_queue() {
+        let body = CreateTaskRequest {
+            goal: "g",
+            require_approval: false,
+            background: true,
+            simulate: false,
+            project_id: None,
+            enable_approval_queue: true,
+        };
+
+        let json = serde_json::to_value(&body).unwrap();
+
+        assert_eq!(json["enable_approval_queue"], true);
     }
 
     #[test]

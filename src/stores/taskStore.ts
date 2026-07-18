@@ -75,6 +75,7 @@ interface TaskStore {
     requireApproval: boolean,
     simulate: boolean,
     projectId?: string,
+    enableApprovalQueue?: boolean,
   ) => Promise<TaskCreated>;
   resumeTask: (taskId: string) => Promise<void>;
   cancelTask: (taskId: string) => Promise<void>;
@@ -128,6 +129,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     requireApproval: boolean,
     simulate: boolean,
     projectId?: string,
+    enableApprovalQueue = false,
   ) => {
     const trimmed = projectId?.trim();
     const created = await invoke<TaskCreated>("create_task", {
@@ -135,6 +137,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       requireApproval,
       simulate,
       projectId: trimmed ? trimmed : null,
+      enableApprovalQueue,
     });
     set({ selectedTaskId: created.task_id, watchedTask: null });
     return created;

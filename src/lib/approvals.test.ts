@@ -3,6 +3,7 @@ import {
   approvalStatusBadgeClassName,
   approvalStatusLabel,
   approvalTypeLabel,
+  formatApprovalCountdown,
   formatApprovalPayload,
   formatApprovalTimestamp,
 } from "./approvals";
@@ -52,6 +53,34 @@ describe("formatApprovalTimestamp", () => {
 
   it("falls back to the raw string for an unparseable timestamp", () => {
     expect(formatApprovalTimestamp("not-a-date")).toBe("not-a-date");
+  });
+});
+
+describe("formatApprovalCountdown", () => {
+  const now = new Date("2026-07-18T12:00:00.000Z");
+
+  it("returns null when there is no expires_at", () => {
+    expect(formatApprovalCountdown(null, now)).toBeNull();
+  });
+
+  it("returns null for an unparseable expires_at", () => {
+    expect(formatApprovalCountdown("not-a-date", now)).toBeNull();
+  });
+
+  it("counts down the remaining seconds", () => {
+    expect(formatApprovalCountdown("2026-07-18T12:01:59.000Z", now)).toBe("Expires in 119s");
+  });
+
+  it("rounds to the nearest second", () => {
+    expect(formatApprovalCountdown("2026-07-18T12:00:00.600Z", now)).toBe("Expires in 1s");
+  });
+
+  it("shows Expired once the deadline has passed", () => {
+    expect(formatApprovalCountdown("2026-07-18T11:59:00.000Z", now)).toBe("Expired");
+  });
+
+  it("shows Expired exactly at the deadline", () => {
+    expect(formatApprovalCountdown("2026-07-18T12:00:00.000Z", now)).toBe("Expired");
   });
 });
 

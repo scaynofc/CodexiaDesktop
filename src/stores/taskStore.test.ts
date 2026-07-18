@@ -114,9 +114,21 @@ describe("useTaskStore", () => {
       requireApproval: true,
       simulate: false,
       projectId: null,
+      enableApprovalQueue: false,
     });
     expect(created.task_id).toBe("new-task");
     expect(useTaskStore.getState().selectedTaskId).toBe("new-task");
+  });
+
+  it("createTask forwards enableApprovalQueue when given", async () => {
+    invokeMock.mockResolvedValueOnce({ task_id: "new-task" });
+
+    await useTaskStore.getState().createTask("do something", false, false, undefined, true);
+
+    expect(invokeMock).toHaveBeenCalledWith(
+      "create_task",
+      expect.objectContaining({ enableApprovalQueue: true }),
+    );
   });
 
   it("createTask trims and forwards a project id when given", async () => {

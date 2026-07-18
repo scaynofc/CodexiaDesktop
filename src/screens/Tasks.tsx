@@ -17,7 +17,13 @@ const STATE_BADGE_VARIANT: Record<TaskState, "default" | "secondary" | "destruct
   };
 
 interface NewTaskFormProps {
-  onCreate: (goal: string, requireApproval: boolean, simulate: boolean, projectId: string) => void;
+  onCreate: (
+    goal: string,
+    requireApproval: boolean,
+    simulate: boolean,
+    projectId: string,
+    enableApprovalQueue: boolean,
+  ) => void;
   /** From Settings' `default_project_id` (Phase 11) - used when the user
    * leaves this form's own project id field blank, never overriding an
    * explicit (including explicitly cleared) value. Empty string means "no
@@ -30,6 +36,7 @@ function NewTaskForm({ onCreate, defaultProjectId }: NewTaskFormProps) {
   const [requireApproval, setRequireApproval] = useState(false);
   const [simulate, setSimulate] = useState(false);
   const [projectId, setProjectId] = useState("");
+  const [enableApprovalQueue, setEnableApprovalQueue] = useState(false);
 
   return (
     <form
@@ -38,7 +45,13 @@ function NewTaskForm({ onCreate, defaultProjectId }: NewTaskFormProps) {
         event.preventDefault();
         const trimmed = goal.trim();
         if (!trimmed) return;
-        onCreate(trimmed, requireApproval, simulate, projectId.trim() || defaultProjectId);
+        onCreate(
+          trimmed,
+          requireApproval,
+          simulate,
+          projectId.trim() || defaultProjectId,
+          enableApprovalQueue,
+        );
         setGoal("");
       }}
     >
@@ -75,6 +88,14 @@ function NewTaskForm({ onCreate, defaultProjectId }: NewTaskFormProps) {
           onChange={(event) => setSimulate(event.target.checked)}
         />
         Simulate (no real side effects)
+      </label>
+      <label className="flex items-center gap-2 text-xs text-muted-foreground">
+        <input
+          type="checkbox"
+          checked={enableApprovalQueue}
+          onChange={(event) => setEnableApprovalQueue(event.target.checked)}
+        />
+        Gate tool calls/memory writes through Approval Center
       </label>
       <Button type="submit" disabled={!goal.trim()}>
         Create Task
@@ -162,8 +183,8 @@ function Tasks() {
     <div className="flex h-full gap-6">
       <div className="flex w-80 shrink-0 flex-col gap-4">
         <NewTaskForm
-          onCreate={(goal, requireApproval, simulate, projectId) =>
-            void createTask(goal, requireApproval, simulate, projectId)
+          onCreate={(goal, requireApproval, simulate, projectId, enableApprovalQueue) =>
+            void createTask(goal, requireApproval, simulate, projectId, enableApprovalQueue)
           }
           defaultProjectId={defaultProjectId}
         />

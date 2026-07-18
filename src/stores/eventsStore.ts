@@ -2,7 +2,11 @@ import { invoke } from "@tauri-apps/api/core";
 import { create } from "zustand";
 
 export type SystemEventType = "error" | "warning" | "info";
-export type SystemEventSource = "task" | "provider";
+/** "approval" (Faz 46 in CodexiaCore) - a notable (non-approved) approval
+ * decision: rejected/expired/cancelled. See
+ * docs/adr/016-approval-queue-desktop-controls.md and CodexiaCore's
+ * docs/adr/020-approval-events-in-log-center.md. */
+export type SystemEventSource = "task" | "provider" | "approval";
 
 export interface SystemEvent {
   timestamp: string;

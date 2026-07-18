@@ -33,6 +33,7 @@ describe("eventSourceLabel", () => {
   it("labels every source", () => {
     expect(eventSourceLabel("task")).toBe("Task");
     expect(eventSourceLabel("provider")).toBe("Provider");
+    expect(eventSourceLabel("approval")).toBe("Approval");
   });
 });
 

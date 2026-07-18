@@ -18,6 +18,7 @@ const TYPE_LABEL: Record<SystemEventType, string> = {
 const SOURCE_LABEL: Record<SystemEventSource, string> = {
   task: "Task",
   provider: "Provider",
+  approval: "Approval",
 };
 
 export function eventTypeLabel(type: SystemEventType): string {

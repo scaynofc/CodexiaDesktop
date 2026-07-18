@@ -23,6 +23,7 @@ the Python runtime this app connects to).
 | [013](013-settings-local-desktop-configuration.md) | Settings: local Desktop configuration, Core stays stateless and config-free                  |
 | [014](014-approval-center-human-in-the-loop.md)    | Approval Center: human-in-the-loop UI over CodexiaCore's Approval System, screen-scoped polling |
 | [015](015-core-version-compatibility-check.md)     | Core version compatibility check: surfacing `/health`'s already-carried api/protocol versions |
+| [016](016-approval-queue-desktop-controls.md)      | Approval queue desktop controls: Task Center checkbox, live countdown, Log Center approval source |
 
 New ADRs go here as `0NN-short-slug.md`, numbered sequentially, added to
 this table.
