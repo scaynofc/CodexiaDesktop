@@ -1,6 +1,7 @@
 import { useLocation } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { versionMismatchMessage } from "@/lib/connection";
 import { findNavItemByPath } from "@/shell/navigation";
 import { useConnectionStore, type ConnectionState } from "@/stores/connectionStore";
 
@@ -34,6 +35,7 @@ function AppHeader() {
   const dismissRestartNotice = useConnectionStore((state) => state.dismissRestartNotice);
 
   const pageTitle = findNavItemByPath(location.pathname)?.label ?? "Codexia Desktop";
+  const mismatchMessage = versionMismatchMessage(status);
 
   return (
     <header className="flex items-center gap-3 border-b border-border px-4 py-3">
@@ -41,6 +43,19 @@ function AppHeader() {
       <h1 className="text-lg font-semibold tracking-tight">{pageTitle}</h1>
       <div className="ml-auto flex items-center gap-2">
         <Badge variant={STATE_BADGE_VARIANT[status.state]}>{STATE_LABEL[status.state]}</Badge>
+        {mismatchMessage && (
+          // Not dismissible, unlike the restart notice below - this
+          // describes the current connection's actual state for as long
+          // as it's true, not a one-shot event a user can acknowledge and
+          // move past (see docs/adr/015-core-version-compatibility-check.md).
+          <Badge
+            variant="outline"
+            className="border-amber-500 text-amber-600 dark:text-amber-400"
+            title="This Desktop build and the connected Core report different API/protocol versions - some features may not work as expected."
+          >
+            {mismatchMessage}
+          </Badge>
+        )}
         {showRestartNotice && (
           <>
             <Badge

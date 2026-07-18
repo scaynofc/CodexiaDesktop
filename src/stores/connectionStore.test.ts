@@ -24,7 +24,13 @@ function health(instanceId: string) {
 beforeEach(() => {
   __resetConnectionStoreForTests();
   useConnectionStore.setState({
-    status: { state: "Connecting", health: null, restarted: false },
+    status: {
+      state: "Connecting",
+      health: null,
+      restarted: false,
+      api_compatible: true,
+      protocol_compatible: true,
+    },
     showRestartNotice: false,
   });
   invokeMock.mockReset();
@@ -37,6 +43,8 @@ describe("useConnectionStore", () => {
       state: "Connected",
       health: health("boot-1"),
       restarted: false,
+      api_compatible: true,
+      protocol_compatible: true,
     });
     listenMock.mockResolvedValue(() => {});
 
@@ -48,7 +56,13 @@ describe("useConnectionStore", () => {
   });
 
   it("subscribes to connection-status-changed exactly once even if init is called multiple times", async () => {
-    invokeMock.mockResolvedValue({ state: "Connecting", health: null, restarted: false });
+    invokeMock.mockResolvedValue({
+      state: "Connecting",
+      health: null,
+      restarted: false,
+      api_compatible: true,
+      protocol_compatible: true,
+    });
     listenMock.mockResolvedValue(() => {});
 
     await Promise.all([
@@ -62,7 +76,13 @@ describe("useConnectionStore", () => {
   });
 
   it("updates the store when connection-status-changed fires", async () => {
-    invokeMock.mockResolvedValue({ state: "Connecting", health: null, restarted: false });
+    invokeMock.mockResolvedValue({
+      state: "Connecting",
+      health: null,
+      restarted: false,
+      api_compatible: true,
+      protocol_compatible: true,
+    });
     let emit: ((event: { payload: unknown }) => void) | undefined;
     listenMock.mockImplementation(
       (_event: string, callback: (event: { payload: unknown }) => void) => {
@@ -72,7 +92,15 @@ describe("useConnectionStore", () => {
     );
 
     await useConnectionStore.getState().init();
-    emit?.({ payload: { state: "Reconnecting", health: null, restarted: false } });
+    emit?.({
+      payload: {
+        state: "Reconnecting",
+        health: null,
+        restarted: false,
+        api_compatible: true,
+        protocol_compatible: true,
+      },
+    });
 
     expect(useConnectionStore.getState().status.state).toBe("Reconnecting");
   });
@@ -82,6 +110,8 @@ describe("useConnectionStore", () => {
       state: "Connected",
       health: health("boot-1"),
       restarted: false,
+      api_compatible: true,
+      protocol_compatible: true,
     });
     listenMock.mockResolvedValue(() => {});
 
@@ -95,6 +125,8 @@ describe("useConnectionStore", () => {
       state: "Connected",
       health: health("boot-1"),
       restarted: false,
+      api_compatible: true,
+      protocol_compatible: true,
     });
     let emit: ((event: { payload: unknown }) => void) | undefined;
     listenMock.mockImplementation(
@@ -108,13 +140,29 @@ describe("useConnectionStore", () => {
     expect(useConnectionStore.getState().showRestartNotice).toBe(false);
 
     // Core restarted: a genuinely new instance_id arrives.
-    emit?.({ payload: { state: "Connected", health: health("boot-2"), restarted: true } });
+    emit?.({
+      payload: {
+        state: "Connected",
+        health: health("boot-2"),
+        restarted: true,
+        api_compatible: true,
+        protocol_compatible: true,
+      },
+    });
     expect(useConnectionStore.getState().showRestartNotice).toBe(true);
 
     // The Rust-side `restarted` flag is transient and would already be back
     // to `false` on this next poll (same instance, no change) - the notice
     // must stay visible anyway, since the user hasn't dismissed it yet.
-    emit?.({ payload: { state: "Connected", health: health("boot-2"), restarted: false } });
+    emit?.({
+      payload: {
+        state: "Connected",
+        health: health("boot-2"),
+        restarted: false,
+        api_compatible: true,
+        protocol_compatible: true,
+      },
+    });
     expect(useConnectionStore.getState().showRestartNotice).toBe(true);
   });
 
@@ -123,6 +171,8 @@ describe("useConnectionStore", () => {
       state: "Connected",
       health: health("boot-1"),
       restarted: false,
+      api_compatible: true,
+      protocol_compatible: true,
     });
     let emit: ((event: { payload: unknown }) => void) | undefined;
     listenMock.mockImplementation(
@@ -133,13 +183,29 @@ describe("useConnectionStore", () => {
     );
 
     await useConnectionStore.getState().init();
-    emit?.({ payload: { state: "Connected", health: health("boot-2"), restarted: true } });
+    emit?.({
+      payload: {
+        state: "Connected",
+        health: health("boot-2"),
+        restarted: true,
+        api_compatible: true,
+        protocol_compatible: true,
+      },
+    });
     expect(useConnectionStore.getState().showRestartNotice).toBe(true);
 
     useConnectionStore.getState().dismissRestartNotice();
     expect(useConnectionStore.getState().showRestartNotice).toBe(false);
 
-    emit?.({ payload: { state: "Connected", health: health("boot-2"), restarted: false } });
+    emit?.({
+      payload: {
+        state: "Connected",
+        health: health("boot-2"),
+        restarted: false,
+        api_compatible: true,
+        protocol_compatible: true,
+      },
+    });
     expect(useConnectionStore.getState().showRestartNotice).toBe(false);
   });
 
@@ -148,6 +214,8 @@ describe("useConnectionStore", () => {
       state: "Connected",
       health: health("boot-1"),
       restarted: false,
+      api_compatible: true,
+      protocol_compatible: true,
     });
     let emit: ((event: { payload: unknown }) => void) | undefined;
     listenMock.mockImplementation(
@@ -158,11 +226,27 @@ describe("useConnectionStore", () => {
     );
 
     await useConnectionStore.getState().init();
-    emit?.({ payload: { state: "Connected", health: health("boot-2"), restarted: true } });
+    emit?.({
+      payload: {
+        state: "Connected",
+        health: health("boot-2"),
+        restarted: true,
+        api_compatible: true,
+        protocol_compatible: true,
+      },
+    });
     useConnectionStore.getState().dismissRestartNotice();
     expect(useConnectionStore.getState().showRestartNotice).toBe(false);
 
-    emit?.({ payload: { state: "Connected", health: health("boot-3"), restarted: true } });
+    emit?.({
+      payload: {
+        state: "Connected",
+        health: health("boot-3"),
+        restarted: true,
+        api_compatible: true,
+        protocol_compatible: true,
+      },
+    });
     expect(useConnectionStore.getState().showRestartNotice).toBe(true);
   });
 });

@@ -15,7 +15,13 @@ vi.mock("@tauri-apps/api/event", () => ({ listen: listenMock }));
 beforeEach(() => {
   __resetConnectionStoreForTests();
   useConnectionStore.setState({
-    status: { state: "Connecting", health: null, restarted: false },
+    status: {
+      state: "Connecting",
+      health: null,
+      restarted: false,
+      api_compatible: true,
+      protocol_compatible: true,
+    },
     showRestartNotice: false,
   });
   invokeMock.mockReset();

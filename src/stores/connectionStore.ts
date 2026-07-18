@@ -18,9 +18,22 @@ export interface ConnectionStatus {
   state: ConnectionState;
   health: HealthResponse | null;
   restarted: boolean;
+  /** Whether the connected Core's api_version/protocol_version match what
+   * this Desktop build expects - computed in
+   * src-tauri/src/services/connection.rs's next_status(), see
+   * docs/adr/015-core-version-compatibility-check.md. `true` when no
+   * health has been observed yet, same as `restarted` starting `false`. */
+  api_compatible: boolean;
+  protocol_compatible: boolean;
 }
 
-const initialStatus: ConnectionStatus = { state: "Connecting", health: null, restarted: false };
+const initialStatus: ConnectionStatus = {
+  state: "Connecting",
+  health: null,
+  restarted: false,
+  api_compatible: true,
+  protocol_compatible: true,
+};
 
 interface ConnectionStore {
   status: ConnectionStatus;

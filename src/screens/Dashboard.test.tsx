@@ -5,7 +5,13 @@ import { useConnectionStore, type HealthResponse } from "@/stores/connectionStor
 
 function setStatus(health: HealthResponse | null) {
   useConnectionStore.setState({
-    status: { state: "Connected", health, restarted: false },
+    status: {
+      state: "Connected",
+      health,
+      restarted: false,
+      api_compatible: true,
+      protocol_compatible: true,
+    },
   });
 }
 

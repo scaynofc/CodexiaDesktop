@@ -24,6 +24,16 @@ const DEFAULT_POLL_INTERVAL: Duration = Duration::from_secs(3);
 const INITIAL_BACKOFF: Duration = Duration::from_secs(1);
 const MAX_BACKOFF: Duration = Duration::from_secs(30);
 
+/// The `api_version`/`protocol_version` this build of Desktop was written
+/// against - CodexiaCore's own ADR-011 (Independent Core/API/Protocol
+/// Versioning) defines these as two independent axes precisely so a
+/// connecting client can tell "the REST contract changed" apart from "the
+/// SSE event schema changed." Bumped by hand whenever Desktop adopts a
+/// breaking REST/SSE change, not tied to Desktop's own package version or
+/// to Core's `core_version`.
+const COMPATIBLE_API_VERSION: u32 = 1;
+const COMPATIBLE_PROTOCOL_VERSION: u32 = 1;
+
 pub type SharedConnectionStatus = Arc<Mutex<ConnectionStatus>>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -51,6 +61,19 @@ pub struct ConnectionStatus {
     /// snapshot (e.g. a command reading the latest status) should treat
     /// this as informational, not sticky - it describes what just changed.
     pub restarted: bool,
+    /// Whether the connected Core's `api_version` matches
+    /// [`COMPATIBLE_API_VERSION`]. `true` when no health has been observed
+    /// yet (`health: None`) - nothing to warn about until a real value
+    /// arrives. Unlike `restarted`, this is not a one-shot signal: it
+    /// stays accurate for as long as `health` reflects the current Core,
+    /// including across `Err` polls (see `next_status`).
+    pub api_compatible: bool,
+    /// Same as `api_compatible`, for `protocol_version` against
+    /// [`COMPATIBLE_PROTOCOL_VERSION`] - kept as a separate field because
+    /// CodexiaCore's ADR-011 treats REST-contract and SSE-schema
+    /// compatibility as independent axes that can change on different
+    /// schedules.
+    pub protocol_compatible: bool,
 }
 
 impl ConnectionStatus {
@@ -59,6 +82,8 @@ impl ConnectionStatus {
             state: ConnectionState::Connecting,
             health: None,
             restarted: false,
+            api_compatible: true,
+            protocol_compatible: true,
         }
     }
 
@@ -79,10 +104,14 @@ pub fn next_status(
                 .health
                 .as_ref()
                 .is_some_and(|prev| prev.instance_id != health.instance_id);
+            let api_compatible = health.api_version == COMPATIBLE_API_VERSION;
+            let protocol_compatible = health.protocol_version == COMPATIBLE_PROTOCOL_VERSION;
             ConnectionStatus {
                 state: ConnectionState::Connected,
                 health: Some(health),
                 restarted,
+                api_compatible,
+                protocol_compatible,
             }
         }
         Err(_) => {
@@ -98,6 +127,11 @@ pub fn next_status(
                 state,
                 health: previous.health.clone(),
                 restarted: false,
+                // A failed poll says nothing new about compatibility - keep
+                // the last-known verdict, same reasoning as preserving
+                // `health` itself above.
+                api_compatible: previous.api_compatible,
+                protocol_compatible: previous.protocol_compatible,
             }
         }
     }
@@ -255,6 +289,9 @@ mod tests {
         assert_eq!(status.state, ConnectionState::Connecting);
         assert!(status.health.is_none());
         assert!(!status.restarted);
+        // Nothing to warn about until a real health value arrives.
+        assert!(status.api_compatible);
+        assert!(status.protocol_compatible);
     }
 
     #[test]
@@ -266,6 +303,82 @@ mod tests {
         assert_eq!(next.state, ConnectionState::Connected);
         assert_eq!(next.health.unwrap().instance_id, "boot-1");
         assert!(!next.restarted, "first-ever connection is not a restart");
+    }
+
+    fn health_with_versions(api_version: u32, protocol_version: u32) -> HealthResponse {
+        HealthResponse {
+            api_version,
+            protocol_version,
+            ..health("boot-1")
+        }
+    }
+
+    #[test]
+    fn matching_versions_are_reported_compatible() {
+        let previous = ConnectionStatus::initial();
+
+        let next = next_status(
+            &previous,
+            Ok(health_with_versions(
+                COMPATIBLE_API_VERSION,
+                COMPATIBLE_PROTOCOL_VERSION,
+            )),
+        );
+
+        assert!(next.api_compatible);
+        assert!(next.protocol_compatible);
+    }
+
+    #[test]
+    fn a_higher_api_version_than_this_build_expects_is_incompatible() {
+        let previous = ConnectionStatus::initial();
+
+        let next = next_status(
+            &previous,
+            Ok(health_with_versions(
+                COMPATIBLE_API_VERSION + 1,
+                COMPATIBLE_PROTOCOL_VERSION,
+            )),
+        );
+
+        assert!(!next.api_compatible);
+        assert!(next.protocol_compatible, "protocol axis is independent");
+    }
+
+    #[test]
+    fn a_different_protocol_version_than_this_build_expects_is_incompatible() {
+        let previous = ConnectionStatus::initial();
+
+        let next = next_status(
+            &previous,
+            Ok(health_with_versions(
+                COMPATIBLE_API_VERSION,
+                COMPATIBLE_PROTOCOL_VERSION + 1,
+            )),
+        );
+
+        assert!(next.api_compatible, "api axis is independent");
+        assert!(!next.protocol_compatible);
+    }
+
+    #[test]
+    fn a_failed_poll_preserves_the_last_known_compatibility_verdict() {
+        let connected = next_status(
+            &ConnectionStatus::initial(),
+            Ok(health_with_versions(
+                COMPATIBLE_API_VERSION + 1,
+                COMPATIBLE_PROTOCOL_VERSION,
+            )),
+        );
+        assert!(!connected.api_compatible);
+
+        let reconnecting = next_status(&connected, Err(BridgeError::Timeout));
+
+        assert!(
+            !reconnecting.api_compatible,
+            "a transient network failure must not silently clear an incompatibility warning"
+        );
+        assert!(reconnecting.protocol_compatible);
     }
 
     #[test]

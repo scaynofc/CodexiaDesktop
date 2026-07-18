@@ -22,6 +22,7 @@ the Python runtime this app connects to).
 | [012](012-log-center-derived-events.md)            | Log Center: derived events from persisted TimelineEvents/ModelAttempts, not a raw log viewer |
 | [013](013-settings-local-desktop-configuration.md) | Settings: local Desktop configuration, Core stays stateless and config-free                  |
 | [014](014-approval-center-human-in-the-loop.md)    | Approval Center: human-in-the-loop UI over CodexiaCore's Approval System, screen-scoped polling |
+| [015](015-core-version-compatibility-check.md)     | Core version compatibility check: surfacing `/health`'s already-carried api/protocol versions |
 
 New ADRs go here as `0NN-short-slug.md`, numbered sequentially, added to
 this table.
