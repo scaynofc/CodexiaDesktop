@@ -8,19 +8,16 @@ React.
 Codexia Desktop never runs inference itself. Every model call stays in
 Codexia Core; this app only talks to Core's HTTP/SSE API.
 
-**Status:** Phase 11 (Settings) — Dashboard, Task Center, Timeline,
-Provider Center, Runtime Center, Memory Center, Log Center, and Settings
-are built; Approval Center is the only remaining planned screen, and
-appears as a disabled sidebar item until its own phase lands (deliberately
-deferred, not just unbuilt: CodexiaCore has no queryable "pending
-approval" concept today, so it has no real data to show yet - see
-`docs/adr/011-memory-center-project-scoped-tasks.md`'s Consequences).
-Settings is numbered Phase 11, not 10 - Approval Center's original Phase
-10 slot remains its own, unclaimed - see
-`docs/adr/013-settings-local-desktop-configuration.md`. See `docs/adr/`
-for the architectural decisions behind this app, and the CodexiaCore
-repo's own `MASTER_ROADMAP_V2.md` / Phase 0 architecture review for the
-cross-repo context this project builds on.
+**Status:** Phase 10 (Approval Center) — every planned screen is built:
+Dashboard, Task Center, Timeline, Provider Center, Runtime Center,
+Approval Center, Memory Center, Log Center, and Settings. Approval Center
+shipped last, in its original Phase 10 slot (deferred twice: once when
+Memory Center shipped in its place, again until CodexiaCore's own
+Approval System phase gave it a queryable "pending approval" concept to
+show - see `docs/adr/014-approval-center-human-in-the-loop.md`). See
+`docs/adr/` for the architectural decisions behind this app, and the
+CodexiaCore repo's own `MASTER_ROADMAP_V2.md` / Phase 0 architecture
+review for the cross-repo context this project builds on.
 
 ## Architecture
 

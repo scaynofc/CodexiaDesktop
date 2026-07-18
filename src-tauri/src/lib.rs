@@ -43,6 +43,9 @@ pub fn run() {
             commands::get_config,
             commands::save_config,
             commands::test_connection,
+            commands::get_pending_approvals,
+            commands::approve_approval,
+            commands::reject_approval,
         ])
         .setup(|app| {
             let shared_status = ConnectionStatus::shared_initial();

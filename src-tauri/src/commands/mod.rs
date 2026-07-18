@@ -7,9 +7,10 @@ use std::sync::Arc;
 use tauri::{AppHandle, Emitter, State};
 
 use crate::core_bridge::{
-    CancelResult, CoreHttpClient, MemoryItem, MetricsSnapshot, OllamaRuntimeStatus, SystemEvent,
-    Task, TaskCreated,
+    Approval, CancelResult, CoreHttpClient, MemoryItem, MetricsSnapshot, OllamaRuntimeStatus,
+    SystemEvent, Task, TaskCreated,
 };
+use crate::services::approvals;
 use crate::services::config::{self, Config, SharedConfig};
 use crate::services::connection::{ConnectionStatus, SharedConnectionStatus};
 use crate::services::events;
@@ -304,6 +305,46 @@ pub async fn test_connection(core_url: String, auth_token: Option<String>) -> Re
         .get_health()
         .await
         .map(|_| ())
+        .map_err(|error| error.to_string())
+}
+
+/// Fetches the current pending approvals fresh - called both on Approval
+/// Center's mount and by its screen-scoped poll interval (see
+/// `services::approvals`). Unlike `get_tasks`, there's no synchronous
+/// state-read counterpart: no background poll loop keeps a pending-approvals
+/// snapshot warm, since polling here only runs while the screen is active.
+#[tauri::command]
+pub async fn get_pending_approvals(
+    client: State<'_, Arc<CoreHttpClient>>,
+) -> Result<Vec<Approval>, String> {
+    approvals::fetch_pending_approvals(client.inner())
+        .await
+        .map_err(|error| error.to_string())
+}
+
+/// Approves an approval, then returns the refreshed pending list in the
+/// same round trip (see `services::approvals::approve_and_refresh`).
+#[tauri::command]
+pub async fn approve_approval(
+    approval_id: String,
+    reason: Option<String>,
+    client: State<'_, Arc<CoreHttpClient>>,
+) -> Result<Vec<Approval>, String> {
+    approvals::approve_and_refresh(client.inner(), &approval_id, reason.as_deref())
+        .await
+        .map_err(|error| error.to_string())
+}
+
+/// Rejects an approval, then returns the refreshed pending list - same
+/// shape as [`approve_approval`].
+#[tauri::command]
+pub async fn reject_approval(
+    approval_id: String,
+    reason: Option<String>,
+    client: State<'_, Arc<CoreHttpClient>>,
+) -> Result<Vec<Approval>, String> {
+    approvals::reject_and_refresh(client.inner(), &approval_id, reason.as_deref())
+        .await
         .map_err(|error| error.to_string())
 }
 

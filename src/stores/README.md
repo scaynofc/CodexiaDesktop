@@ -40,3 +40,13 @@ store reactively.
   `config.default_project_id` reaches Task Center whether or not the user
   ever opens Settings - see
   `docs/adr/013-settings-local-desktop-configuration.md`.
+- `approvalStore.ts` (Phase 10) - `fetchApprovals()`/`approve(id, reason?)`/
+  `reject(id, reason?)` wrapping `get_pending_approvals`/
+  `approve_approval`/`reject_approval`, same shape as `memoryStore.ts`'s
+  "act, then apply the server's refreshed list" pair. Unlike every other
+  store here, it is re-invoked on a timer - but the timer itself lives in
+  `Approvals.tsx`, not this store, since polling is deliberately
+  screen-scoped rather than an always-on background loop - see
+  `docs/adr/014-approval-center-human-in-the-loop.md`. Also tracks
+  `decidingIds` (ids currently mid-decision) so the screen can disable
+  just the row being acted on, not the whole list.

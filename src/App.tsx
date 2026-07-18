@@ -4,6 +4,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AppHeader from "@/shell/AppHeader";
 import AppSidebar from "@/shell/AppSidebar";
+import Approvals from "@/screens/Approvals";
 import Dashboard from "@/screens/Dashboard";
 import Log from "@/screens/Log";
 import Memory from "@/screens/Memory";
@@ -18,15 +19,14 @@ import { useSettingsStore } from "@/stores/settingsStore";
 /**
  * Phase 3 (Application Shell) + Phase 4 (Task Center) + Phase 5 (Timeline)
  * + Phase 6 (Provider Center) + Phase 7 (Runtime Center) + Phase 8
- * (Memory Center) + Phase 9 (Log Center) + Phase 11 (Settings, out of
- * numeric order - Approval Center's Phase 10 slot remains deferred, see
- * docs/adr/013-settings-local-desktop-configuration.md). `MemoryRouter`
- * (not Browser/HashRouter) - a desktop app has no meaningful URL bar, and
+ * (Memory Center) + Phase 9 (Log Center) + Phase 11 (Settings, built out
+ * of numeric order - see docs/adr/013-settings-local-desktop-configuration.md)
+ * + Phase 10 (Approval Center, its original slot, filled in last - see
+ * docs/adr/014-approval-center-human-in-the-loop.md). `MemoryRouter` (not
+ * Browser/HashRouter) - a desktop app has no meaningful URL bar, and
  * Tauri's asset protocol has no SPA-fallback for a deep path on reload -
- * see docs/adr/006-application-shell-navigation.md. Every screen except
- * Approval Center has a registered `<Route>`; Approval Center (see
- * src/shell/navigation.ts) renders as a disabled sidebar item until its
- * own phase lands.
+ * see docs/adr/006-application-shell-navigation.md. Every screen now has a
+ * registered `<Route>`.
  */
 function App() {
   const init = useConnectionStore((state) => state.init);
@@ -54,6 +54,7 @@ function App() {
                 <Route path="/timeline" element={<Timeline />} />
                 <Route path="/providers" element={<Providers />} />
                 <Route path="/runtime" element={<Runtime />} />
+                <Route path="/approvals" element={<Approvals />} />
                 <Route path="/memory" element={<Memory />} />
                 <Route path="/logs" element={<Log />} />
                 <Route path="/settings" element={<Settings />} />

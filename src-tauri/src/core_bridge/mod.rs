@@ -9,6 +9,7 @@
 //! of `reqwest::Response::chunk()` rather than a dedicated SSE crate - see
 //! docs/adr/007-task-center-polling-and-sse.md for why.
 
+mod approvals;
 mod error;
 mod events;
 mod http;
@@ -18,6 +19,7 @@ mod ollama_runtime;
 mod sse;
 mod tasks;
 
+pub use approvals::{Approval, ApprovalStatus, ApprovalType};
 pub use error::BridgeError;
 pub use events::{SystemEvent, SystemEventSource, SystemEventType};
 pub use http::{CoreHttpClient, HealthResponse};

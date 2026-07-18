@@ -12,7 +12,7 @@ describe("NAV_ITEMS", () => {
     expect(new Set(paths).size).toBe(paths.length);
   });
 
-  it("has exactly the enabled items built so far: Dashboard, Task Center, Timeline, Provider Center, Runtime Center, Memory Center, Log Center, and Settings", () => {
+  it("has every screen built and enabled, as of Phase 10 (Approval Center)", () => {
     const enabledIds = NAV_ITEMS.filter((item) => item.enabled).map((item) => item.id);
     expect(enabledIds).toEqual([
       "dashboard",
@@ -20,6 +20,7 @@ describe("NAV_ITEMS", () => {
       "timeline",
       "providers",
       "runtime",
+      "approvals",
       "memory",
       "logs",
       "settings",
@@ -39,6 +40,7 @@ describe("findNavItemByPath", () => {
     expect(findNavItemByPath("/timeline")?.id).toBe("timeline");
     expect(findNavItemByPath("/providers")?.id).toBe("providers");
     expect(findNavItemByPath("/runtime")?.id).toBe("runtime");
+    expect(findNavItemByPath("/approvals")?.id).toBe("approvals");
     expect(findNavItemByPath("/memory")?.id).toBe("memory");
     expect(findNavItemByPath("/logs")?.id).toBe("logs");
     expect(findNavItemByPath("/settings")?.id).toBe("settings");

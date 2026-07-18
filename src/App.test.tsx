@@ -40,13 +40,4 @@ describe("App shell", () => {
     expect(screen.getByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
     expect(screen.getByText(/Waiting for Codexia Core/)).toBeInTheDocument();
   });
-
-  it("does not let a disabled item navigate anywhere", () => {
-    render(<App />);
-
-    const approvalsButton = screen.getByRole("button", { name: /Approval Center/ });
-    expect(approvalsButton).toBeDisabled();
-    // Still on Dashboard - clicking (were it possible) has nowhere to go.
-    expect(screen.getByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
-  });
 });

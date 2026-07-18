@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import AppSidebar from "./AppSidebar";
@@ -43,21 +43,11 @@ describe("AppSidebar", () => {
     }
 
     // No stray links for unbuilt screens - only the enabled items navigate.
+    // Every screen is built as of Phase 10 (Approval Center), so this
+    // currently asserts vacuously (no disabled items to check) - kept as a
+    // standing invariant for whenever the next screen is added disabled.
     const enabledCount = NAV_ITEMS.filter((entry) => entry.enabled).length;
     const allLinks = screen.getAllByRole("link");
     expect(allLinks).toHaveLength(enabledCount);
-  });
-
-  it("shows a tooltip explaining why a disabled item isn't clickable, on focus", async () => {
-    renderSidebar();
-
-    const approvalsButton = screen.getByRole("button", { name: /Approval Center/ });
-    fireEvent.focus(approvalsButton);
-
-    await waitFor(() => {
-      // Radix renders the tooltip content twice (visible + a visually-hidden
-      // a11y duplicate) - assert at least one is present, not exactly one.
-      expect(screen.getAllByText(/Approval Center - not built yet/).length).toBeGreaterThan(0);
-    });
   });
 });

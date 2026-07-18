@@ -49,7 +49,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: "Approval Center",
     path: "/approvals",
     icon: ShieldCheck,
-    enabled: false,
+    enabled: true,
   },
   { id: "memory", label: "Memory Center", path: "/memory", icon: Boxes, enabled: true },
   { id: "logs", label: "Log Center", path: "/logs", icon: ScrollText, enabled: true },

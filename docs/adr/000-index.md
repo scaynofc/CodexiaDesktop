@@ -21,6 +21,7 @@ the Python runtime this app connects to).
 | [011](011-memory-center-project-scoped-tasks.md)   | Memory Center, shipped with `project_id` Task scoping so it has real data                    |
 | [012](012-log-center-derived-events.md)            | Log Center: derived events from persisted TimelineEvents/ModelAttempts, not a raw log viewer |
 | [013](013-settings-local-desktop-configuration.md) | Settings: local Desktop configuration, Core stays stateless and config-free                  |
+| [014](014-approval-center-human-in-the-loop.md)    | Approval Center: human-in-the-loop UI over CodexiaCore's Approval System, screen-scoped polling |
 
 New ADRs go here as `0NN-short-slug.md`, numbered sequentially, added to
 this table.
