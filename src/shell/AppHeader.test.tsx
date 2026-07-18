@@ -18,6 +18,7 @@ function health(instanceId: string, overrides: Partial<HealthResponse> = {}) {
     protocol_version: 1,
     instance_id: instanceId,
     timestamp: "2026-07-16T00:00:00+00:00",
+    max_task_cost_usd: null,
     ...overrides,
   };
 }

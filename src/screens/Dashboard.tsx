@@ -1,5 +1,12 @@
 import { useConnectionStore } from "@/stores/connectionStore";
 
+/** CodexiaCore's configured per-task cost ceiling - `null` means this
+ * Core instance enforces no limit at all. See
+ * docs/adr/018-cost-budget-visibility.md. */
+function formatMaxTaskCost(value: number | null): string {
+  return value === null ? "No limit" : `$${value.toFixed(2)}`;
+}
+
 /**
  * The one real screen Phase 3 ships. Connection state itself (badge,
  * restart notice) lives in the shared AppHeader now, not here - see
@@ -27,6 +34,8 @@ function Dashboard() {
       <dd>{health.protocol_version}</dd>
       <dt>Instance</dt>
       <dd className="font-mono text-xs">{health.instance_id.slice(0, 8)}</dd>
+      <dt>Max task cost</dt>
+      <dd>{formatMaxTaskCost(health.max_task_cost_usd)}</dd>
     </dl>
   );
 }

@@ -279,6 +279,7 @@ mod tests {
             protocol_version: 1,
             instance_id: instance_id.into(),
             timestamp: "2026-07-16T00:00:00+00:00".into(),
+            max_task_cost_usd: None,
         }
     }
 

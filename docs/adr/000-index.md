@@ -25,6 +25,7 @@ the Python runtime this app connects to).
 | [015](015-core-version-compatibility-check.md)     | Core version compatibility check: surfacing `/health`'s already-carried api/protocol versions |
 | [016](016-approval-queue-desktop-controls.md)      | Approval queue desktop controls: Task Center checkbox, live countdown, Log Center approval source |
 | [017](017-approval-awareness.md)                   | Approval awareness: sidebar badge + OS notification, fed by a background approval-watch loop |
+| [018](018-cost-budget-visibility.md)                | Cost budget visibility: Dashboard surfaces CodexiaCore's already-enforced max_task_cost_usd |
 
 New ADRs go here as `0NN-short-slug.md`, numbered sequentially, added to
 this table.

@@ -11,7 +11,7 @@ use super::error::BridgeError;
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct HealthResponse {
     pub status: String,
     pub alive: bool,
@@ -20,6 +20,10 @@ pub struct HealthResponse {
     pub protocol_version: u32,
     pub instance_id: String,
     pub timestamp: String,
+    /// CodexiaCore's configured per-task cost ceiling
+    /// (`settings.max_task_cost_usd` there) - `None` means unlimited. See
+    /// docs/adr/018-cost-budget-visibility.md.
+    pub max_task_cost_usd: Option<f64>,
 }
 
 /// `base_url`/`bearer_token` are `RwLock`, not plain fields - Phase 11
@@ -159,7 +163,8 @@ mod tests {
             "api_version": 1,
             "protocol_version": 1,
             "instance_id": "abc123",
-            "timestamp": "2026-07-16T12:00:00+00:00"
+            "timestamp": "2026-07-16T12:00:00+00:00",
+            "max_task_cost_usd": 0.75
         }"#;
 
         let parsed: HealthResponse = serde_json::from_str(raw).unwrap();
@@ -169,6 +174,25 @@ mod tests {
         assert_eq!(parsed.core_version, "2.0.0");
         assert_eq!(parsed.api_version, 1);
         assert_eq!(parsed.instance_id, "abc123");
+        assert_eq!(parsed.max_task_cost_usd, Some(0.75));
+    }
+
+    #[test]
+    fn health_response_deserializes_a_null_cost_cap_as_no_limit() {
+        let raw = r#"{
+            "status": "ok",
+            "alive": true,
+            "core_version": "2.0.0",
+            "api_version": 1,
+            "protocol_version": 1,
+            "instance_id": "abc123",
+            "timestamp": "2026-07-16T12:00:00+00:00",
+            "max_task_cost_usd": null
+        }"#;
+
+        let parsed: HealthResponse = serde_json::from_str(raw).unwrap();
+
+        assert_eq!(parsed.max_task_cost_usd, None);
     }
 
     #[tokio::test]

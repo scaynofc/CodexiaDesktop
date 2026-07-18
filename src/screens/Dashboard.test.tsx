@@ -33,6 +33,7 @@ describe("Dashboard", () => {
       protocol_version: 1,
       instance_id: "abcdef1234567890",
       timestamp: "2026-07-16T00:00:00+00:00",
+      max_task_cost_usd: null,
     });
 
     render(<Dashboard />);
@@ -42,5 +43,39 @@ describe("Dashboard", () => {
     // api_version and protocol_version are both "1" - assert there are two
     // distinct values shown rather than a single ambiguous getByText("1").
     expect(screen.getAllByText("1")).toHaveLength(2);
+  });
+
+  it("shows No limit when the Core has no cost cap configured", () => {
+    setStatus({
+      status: "ok",
+      alive: true,
+      core_version: "2.0.0",
+      api_version: 1,
+      protocol_version: 1,
+      instance_id: "abcdef1234567890",
+      timestamp: "2026-07-16T00:00:00+00:00",
+      max_task_cost_usd: null,
+    });
+
+    render(<Dashboard />);
+
+    expect(screen.getByText("No limit")).toBeInTheDocument();
+  });
+
+  it("shows the configured cost cap formatted as currency", () => {
+    setStatus({
+      status: "ok",
+      alive: true,
+      core_version: "2.0.0",
+      api_version: 1,
+      protocol_version: 1,
+      instance_id: "abcdef1234567890",
+      timestamp: "2026-07-16T00:00:00+00:00",
+      max_task_cost_usd: 0.5,
+    });
+
+    render(<Dashboard />);
+
+    expect(screen.getByText("$0.50")).toBeInTheDocument();
   });
 });

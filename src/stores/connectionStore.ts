@@ -12,6 +12,10 @@ export interface HealthResponse {
   protocol_version: number;
   instance_id: string;
   timestamp: string;
+  /** This Core instance's configured per-task cost ceiling
+   * (settings.max_task_cost_usd there) - `null` means unlimited. See
+   * docs/adr/018-cost-budget-visibility.md. */
+  max_task_cost_usd: number | null;
 }
 
 export interface ConnectionStatus {
