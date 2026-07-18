@@ -10,6 +10,7 @@ use crate::core_bridge::{
     Approval, CancelResult, CoreHttpClient, MemoryItem, MetricsSnapshot, OllamaRuntimeStatus,
     SystemEvent, Task, TaskCreated,
 };
+use crate::services::approval_watch::SharedPendingApprovals;
 use crate::services::approvals;
 use crate::services::config::{self, Config, SharedConfig};
 use crate::services::connection::{ConnectionStatus, SharedConnectionStatus};
@@ -348,6 +349,20 @@ pub async fn reject_approval(
     approvals::reject_and_refresh(client.inner(), &approval_id, reason.as_deref())
         .await
         .map_err(|error| error.to_string())
+}
+
+/// Reads the current pending-approval count synchronously - same "fetch
+/// on mount, then listen for events" pattern as [`get_connection_status`]/
+/// [`get_tasks`]. The background approval-watch loop
+/// (`services::approval_watch::run_approval_watch_loop`, running for the
+/// app's whole lifetime, not just while Approval Center is open) is the
+/// only writer - see docs/adr/017-approval-awareness.md. Returns a count,
+/// not the full list: the sidebar badge only ever needs a number, and
+/// Approval Center's own `get_pending_approvals` already exists for the
+/// full detail.
+#[tauri::command]
+pub fn get_pending_approval_count(state: State<SharedPendingApprovals>) -> usize {
+    state.lock().unwrap().len()
 }
 
 #[tauri::command]

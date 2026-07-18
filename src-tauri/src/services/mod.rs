@@ -2,6 +2,7 @@
 //! offline mode, notifications, polling, local cache, and desktop-side
 //! state. Consumes Core Bridge, never talks HTTP/SSE directly itself.
 
+pub mod approval_watch;
 pub mod approvals;
 pub mod config;
 pub mod connection;

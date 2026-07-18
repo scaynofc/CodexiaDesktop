@@ -10,6 +10,7 @@
 //! docs/adr/007-task-center-polling-and-sse.md for why.
 
 mod approvals;
+mod approvals_sse;
 mod error;
 mod events;
 mod http;
@@ -17,9 +18,11 @@ mod memory;
 mod metrics;
 mod ollama_runtime;
 mod sse;
+mod sse_framing;
 mod tasks;
 
 pub use approvals::{Approval, ApprovalStatus, ApprovalType};
+pub use approvals_sse::{watch_pending_approvals, ApprovalStreamEvent};
 pub use error::BridgeError;
 pub use events::{SystemEvent, SystemEventSource, SystemEventType};
 pub use http::{CoreHttpClient, HealthResponse};

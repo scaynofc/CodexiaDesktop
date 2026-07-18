@@ -1,10 +1,15 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import AppSidebar from "./AppSidebar";
 import { NAV_ITEMS } from "./navigation";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useApprovalStore } from "@/stores/approvalStore";
+
+beforeEach(() => {
+  useApprovalStore.setState({ pendingCount: 0 });
+});
 
 function renderSidebar() {
   return render(
@@ -49,5 +54,19 @@ describe("AppSidebar", () => {
     const enabledCount = NAV_ITEMS.filter((entry) => entry.enabled).length;
     const allLinks = screen.getAllByRole("link");
     expect(allLinks).toHaveLength(enabledCount);
+  });
+
+  it("shows no pending-approval badge when the count is zero", () => {
+    renderSidebar();
+
+    expect(screen.queryByText(/^\d+$/)).not.toBeInTheDocument();
+  });
+
+  it("shows the pending-approval count as a badge on the Approval Center item", () => {
+    useApprovalStore.setState({ pendingCount: 3 });
+
+    renderSidebar();
+
+    expect(screen.getByText("3")).toBeInTheDocument();
   });
 });

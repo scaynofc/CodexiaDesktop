@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { create } from "zustand";
 
 export type ApprovalType = "tool" | "memory";
@@ -26,6 +27,22 @@ interface ApprovalStore {
    * is in flight. */
   decidingIds: string[];
   /**
+   * The current pending-approval count, kept live by
+   * `services::approval_watch::run_approval_watch_loop` - a background
+   * loop spawned once in `lib.rs`'s `setup()` that runs for the app's
+   * whole lifetime, independent of Approvals.tsx's own screen-scoped
+   * polling below. Powers the sidebar badge (App.tsx's root effect calls
+   * `init()` once, same as `connectionStore`/`settingsStore`) - see
+   * docs/adr/017-approval-awareness.md.
+   */
+  pendingCount: number;
+  /** Subscribes to `approvals-changed` and fetches the current count once
+   * via `get_pending_approval_count`, so a component mounting after the
+   * app already has pending approvals doesn't have to wait for the next
+   * change event to see a real count. Safe to call from multiple
+   * components - only the first call actually subscribes. */
+  init: () => Promise<void>;
+  /**
    * Fetches CodexiaCore's current pending approvals via `get_pending_approvals`
    * - called on Approval Center's mount and by its screen-scoped poll
    * interval (owned by Approvals.tsx itself, not this store or a Rust
@@ -41,11 +58,29 @@ interface ApprovalStore {
   reject: (approvalId: string, reason?: string) => Promise<void>;
 }
 
+let initPromise: Promise<void> | null = null;
+
 export const useApprovalStore = create<ApprovalStore>((set, get) => ({
   approvals: [],
   fetchState: "idle",
   error: null,
   decidingIds: [],
+  pendingCount: 0,
+
+  init: () => {
+    if (initPromise) return initPromise;
+
+    initPromise = (async () => {
+      const count = await invoke<number>("get_pending_approval_count");
+      set({ pendingCount: count });
+
+      await listen<Approval[]>("approvals-changed", (event) => {
+        set({ pendingCount: event.payload.length });
+      });
+    })();
+
+    return initPromise;
+  },
 
   fetchApprovals: async () => {
     set({ fetchState: "loading", error: null });
@@ -89,3 +124,9 @@ export const useApprovalStore = create<ApprovalStore>((set, get) => ({
     }
   },
 }));
+
+/** Exposed for tests only - lets each test start from a clean subscription. */
+export function __resetApprovalStoreForTests(unlisten?: UnlistenFn): void {
+  initPromise = null;
+  unlisten?.();
+}

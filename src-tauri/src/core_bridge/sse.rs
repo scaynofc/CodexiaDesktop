@@ -13,6 +13,7 @@ use std::time::Duration;
 
 use super::error::BridgeError;
 use super::http::CoreHttpClient;
+use super::sse_framing::{extract_block, parse_block};
 use super::tasks::{Task, TaskState};
 
 /// Comfortably above CodexiaCore's own `DEFAULT_MAX_WAIT_SECONDS` (300s,
@@ -53,39 +54,6 @@ pub fn parse_task_event(event_name: &str, data: &str) -> Result<TaskEvent, Bridg
             "unrecognized SSE event type: {other}"
         ))),
     }
-}
-
-/// Splits one `event: ...\ndata: ...\n\n`-shaped block into (event name,
-/// joined data). Mirrors CodexiaCore's own reference client-side parser
-/// (`static/dashboard.html`'s inline block-splitting script) line for line.
-fn parse_block(block: &str) -> (String, String) {
-    let mut event_name = String::from("message");
-    let mut data_lines = Vec::new();
-
-    for line in block.split('\n') {
-        if let Some(rest) = line.strip_prefix("event: ") {
-            event_name = rest.to_string();
-        } else if let Some(rest) = line.strip_prefix("data: ") {
-            data_lines.push(rest);
-        }
-    }
-
-    (event_name, data_lines.join("\n"))
-}
-
-/// Pulls one complete `\n\n`-terminated block out of `buffer` if one is
-/// present, leaving any trailing partial block in place for the next chunk
-/// to complete - the same reassembly `dashboard.html` does client-side,
-/// necessary because a real TCP read can split a block anywhere, including
-/// mid-line.
-fn extract_block(buffer: &mut Vec<u8>) -> Option<String> {
-    const DELIMITER: &[u8] = b"\n\n";
-    let position = buffer
-        .windows(DELIMITER.len())
-        .position(|window| window == DELIMITER)?;
-
-    let drained: Vec<u8> = buffer.drain(..position + DELIMITER.len()).collect();
-    Some(String::from_utf8_lossy(&drained[..position]).into_owned())
 }
 
 /// Opens `GET /tasks/{task_id}/events` and calls `on_event` for every parsed
@@ -192,27 +160,6 @@ mod tests {
     #[test]
     fn rejects_malformed_task_json() {
         assert!(parse_task_event("task", "{not json").is_err());
-    }
-
-    #[test]
-    fn parse_block_extracts_event_and_joined_multiline_data() {
-        let block = "event: task\ndata: line one\ndata: line two";
-
-        let (event_name, data) = parse_block(block);
-
-        assert_eq!(event_name, "task");
-        assert_eq!(data, "line one\nline two");
-    }
-
-    #[test]
-    fn extract_block_leaves_a_trailing_partial_block_in_the_buffer() {
-        let mut buffer = b"event: done\ndata: \n\nevent: tas".to_vec();
-
-        let block = extract_block(&mut buffer).unwrap();
-
-        assert_eq!(block, "event: done\ndata: ");
-        assert_eq!(buffer, b"event: tas");
-        assert!(extract_block(&mut buffer).is_none());
     }
 
     /// The one property neither `parse_task_event` nor `extract_block` in

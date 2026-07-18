@@ -1,4 +1,5 @@
 import { NavLink } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
 import {
   Sidebar,
   SidebarContent,
@@ -11,6 +12,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { NAV_ITEMS } from "@/shell/navigation";
+import { useApprovalStore } from "@/stores/approvalStore";
 
 /**
  * Renders every planned screen from NAV_ITEMS. Enabled items are real
@@ -18,8 +20,17 @@ import { NAV_ITEMS } from "@/shell/navigation";
  * yet) and explain why via a tooltip on hover/focus - see
  * docs/adr/006-application-shell-navigation.md for why this is preferred
  * over building 8 throwaway "coming soon" screens.
+ *
+ * The Approval Center item also shows a pending-count badge, fed by
+ * `approvalStore`'s `init()` (called from `App.tsx`'s root effect, not
+ * this component) - kept live by a Rust background loop that runs
+ * regardless of which screen is active, so the badge stays accurate even
+ * when the user is nowhere near Approval Center. See
+ * docs/adr/017-approval-awareness.md.
  */
 function AppSidebar() {
+  const pendingApprovalCount = useApprovalStore((state) => state.pendingCount);
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
@@ -39,6 +50,14 @@ function AppSidebar() {
                         <NavLink to={item.path} end={item.path === "/"}>
                           <item.icon />
                           <span>{item.label}</span>
+                          {item.id === "approvals" && pendingApprovalCount > 0 && (
+                            <Badge
+                              variant="outline"
+                              className="ml-auto border-amber-500/50 text-amber-600 dark:text-amber-400"
+                            >
+                              {pendingApprovalCount}
+                            </Badge>
+                          )}
                         </NavLink>
                       </SidebarMenuButton>
                     ) : (

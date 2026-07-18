@@ -13,6 +13,7 @@ import Runtime from "@/screens/Runtime";
 import Settings from "@/screens/Settings";
 import Tasks from "@/screens/Tasks";
 import Timeline from "@/screens/Timeline";
+import { useApprovalStore } from "@/stores/approvalStore";
 import { useConnectionStore } from "@/stores/connectionStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 
@@ -31,6 +32,7 @@ import { useSettingsStore } from "@/stores/settingsStore";
 function App() {
   const init = useConnectionStore((state) => state.init);
   const initSettings = useSettingsStore((state) => state.init);
+  const initApprovals = useApprovalStore((state) => state.init);
 
   useEffect(() => {
     void init();
@@ -38,7 +40,12 @@ function App() {
     // `config.default_project_id` is available to Task Center (and any
     // future screen) regardless of whether the user ever opens Settings.
     void initSettings();
-  }, [init, initSettings]);
+    // Loaded here, not just on Approval Center's own mount, so the
+    // sidebar badge (AppSidebar.tsx) shows a real pending count
+    // regardless of which screen is active - see
+    // docs/adr/017-approval-awareness.md.
+    void initApprovals();
+  }, [init, initSettings, initApprovals]);
 
   return (
     <MemoryRouter>

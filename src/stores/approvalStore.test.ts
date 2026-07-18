@@ -1,9 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useApprovalStore, type Approval } from "./approvalStore";
+import { __resetApprovalStoreForTests, useApprovalStore, type Approval } from "./approvalStore";
 
-const { invokeMock } = vi.hoisted(() => ({ invokeMock: vi.fn() }));
+const { invokeMock, listenMock } = vi.hoisted(() => ({
+  invokeMock: vi.fn(),
+  listenMock: vi.fn(),
+}));
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: invokeMock }));
+vi.mock("@tauri-apps/api/event", () => ({ listen: listenMock }));
 
 function approval(overrides: Partial<Approval> = {}): Approval {
   return {
@@ -22,8 +26,16 @@ function approval(overrides: Partial<Approval> = {}): Approval {
 }
 
 beforeEach(() => {
-  useApprovalStore.setState({ approvals: [], fetchState: "idle", error: null, decidingIds: [] });
+  __resetApprovalStoreForTests();
+  useApprovalStore.setState({
+    approvals: [],
+    fetchState: "idle",
+    error: null,
+    decidingIds: [],
+    pendingCount: 0,
+  });
   invokeMock.mockReset();
+  listenMock.mockReset();
 });
 
 describe("useApprovalStore", () => {
@@ -32,6 +44,67 @@ describe("useApprovalStore", () => {
     expect(state.approvals).toEqual([]);
     expect(state.fetchState).toBe("idle");
     expect(state.decidingIds).toEqual([]);
+    expect(state.pendingCount).toBe(0);
+  });
+
+  it("init fetches the initial count via get_pending_approval_count", async () => {
+    invokeMock.mockResolvedValue(3);
+    listenMock.mockResolvedValue(() => {});
+
+    await useApprovalStore.getState().init();
+
+    expect(invokeMock).toHaveBeenCalledWith("get_pending_approval_count");
+    expect(useApprovalStore.getState().pendingCount).toBe(3);
+  });
+
+  it("init subscribes to approvals-changed exactly once even if init is called multiple times", async () => {
+    invokeMock.mockResolvedValue(0);
+    listenMock.mockResolvedValue(() => {});
+
+    await Promise.all([
+      useApprovalStore.getState().init(),
+      useApprovalStore.getState().init(),
+      useApprovalStore.getState().init(),
+    ]);
+
+    expect(invokeMock).toHaveBeenCalledTimes(1);
+    expect(listenMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("updates pendingCount when approvals-changed fires", async () => {
+    invokeMock.mockResolvedValue(0);
+    let emit: ((event: { payload: unknown }) => void) | undefined;
+    listenMock.mockImplementation(
+      (_event: string, callback: (event: { payload: unknown }) => void) => {
+        emit = callback;
+        return Promise.resolve(() => {});
+      },
+    );
+
+    await useApprovalStore.getState().init();
+    expect(useApprovalStore.getState().pendingCount).toBe(0);
+
+    emit?.({ payload: [approval(), approval({ id: "appr-2" })] });
+
+    expect(useApprovalStore.getState().pendingCount).toBe(2);
+  });
+
+  it("updates pendingCount back to zero when the last approval is decided", async () => {
+    invokeMock.mockResolvedValue(1);
+    let emit: ((event: { payload: unknown }) => void) | undefined;
+    listenMock.mockImplementation(
+      (_event: string, callback: (event: { payload: unknown }) => void) => {
+        emit = callback;
+        return Promise.resolve(() => {});
+      },
+    );
+
+    await useApprovalStore.getState().init();
+    expect(useApprovalStore.getState().pendingCount).toBe(1);
+
+    emit?.({ payload: [] });
+
+    expect(useApprovalStore.getState().pendingCount).toBe(0);
   });
 
   it("fetchApprovals calls get_pending_approvals and stores the result", async () => {

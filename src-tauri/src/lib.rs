@@ -12,8 +12,10 @@ pub mod services;
 use std::sync::Arc;
 
 use tauri::{Emitter, Manager};
+use tauri_plugin_notification::NotificationExt;
 
 use crate::core_bridge::CoreHttpClient;
+use crate::services::approval_watch::{run_approval_watch_loop, shared_pending_approvals_initial};
 use crate::services::config;
 use crate::services::connection::{
     run_connection_loop, run_supervised, ConnectionStatus, SUPERVISOR_RESTART_DELAY,
@@ -27,6 +29,7 @@ use crate::services::tasks::{
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_notification::init())
         .invoke_handler(tauri::generate_handler![
             commands::get_connection_status,
             commands::get_tasks,
@@ -46,6 +49,7 @@ pub fn run() {
             commands::get_pending_approvals,
             commands::approve_approval,
             commands::reject_approval,
+            commands::get_pending_approval_count,
         ])
         .setup(|app| {
             let shared_status = ConnectionStatus::shared_initial();
@@ -80,7 +84,18 @@ pub fn run() {
             let shared_task_watch_handle = shared_task_watch_handle_initial();
             app.manage(shared_task_watch_handle);
 
+            let shared_pending_approvals = shared_pending_approvals_initial();
+            app.manage(shared_pending_approvals.clone());
+
             let app_handle = app.handle().clone();
+
+            // Grabbed now, before the two existing spawns below each move
+            // their own captures of `client`/`shared_status`/`app_handle` -
+            // this is the approval-watch loop's own independent set, not
+            // reused from (or by) the connection/task-list loops.
+            let approval_client = client.clone();
+            let approval_status = shared_status.clone();
+            let approval_app_handle = app_handle.clone();
 
             // Wrapped in `run_supervised`: if `run_connection_loop` ever
             // panics, it gets respawned instead of silently leaving the UI
@@ -119,6 +134,47 @@ pub fn run() {
                     run_task_list_poll_loop(client, shared_task_list, shared_status, move |tasks| {
                         let _ = app_handle.emit("tasks-changed", tasks);
                     })
+                },
+                SUPERVISOR_RESTART_DELAY,
+            ));
+
+            // Same supervision, for the approval-watch loop (see
+            // docs/adr/017-approval-awareness.md) - runs for the app's
+            // whole lifetime (unlike Approval Center's own screen-scoped
+            // polling in Approvals.tsx), so the sidebar badge and OS
+            // notifications below stay accurate on every screen.
+            tauri::async_runtime::spawn(run_supervised(
+                move || {
+                    let client = approval_client.clone();
+                    let shared_pending_approvals = shared_pending_approvals.clone();
+                    let approval_status = approval_status.clone();
+                    let app_handle = approval_app_handle.clone();
+                    let notify_handle = approval_app_handle.clone();
+                    run_approval_watch_loop(
+                        client,
+                        shared_pending_approvals,
+                        approval_status,
+                        move |approvals| {
+                            let _ = app_handle.emit("approvals-changed", approvals);
+                        },
+                        move |new_approvals| {
+                            // Best-effort, same as every other emit here - a
+                            // failed notification (permission denied, no
+                            // notification daemon on this OS, ...) must
+                            // never break the watch loop itself.
+                            let body = if new_approvals.len() == 1 {
+                                "A new approval is waiting for your decision.".to_string()
+                            } else {
+                                format!("{} new approvals are waiting for your decision.", new_approvals.len())
+                            };
+                            let _ = notify_handle
+                                .notification()
+                                .builder()
+                                .title("Codexia Desktop")
+                                .body(body)
+                                .show();
+                        },
+                    )
                 },
                 SUPERVISOR_RESTART_DELAY,
             ));

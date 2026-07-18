@@ -24,6 +24,7 @@ the Python runtime this app connects to).
 | [014](014-approval-center-human-in-the-loop.md)    | Approval Center: human-in-the-loop UI over CodexiaCore's Approval System, screen-scoped polling |
 | [015](015-core-version-compatibility-check.md)     | Core version compatibility check: surfacing `/health`'s already-carried api/protocol versions |
 | [016](016-approval-queue-desktop-controls.md)      | Approval queue desktop controls: Task Center checkbox, live countdown, Log Center approval source |
+| [017](017-approval-awareness.md)                   | Approval awareness: sidebar badge + OS notification, fed by a background approval-watch loop |
 
 New ADRs go here as `0NN-short-slug.md`, numbered sequentially, added to
 this table.
