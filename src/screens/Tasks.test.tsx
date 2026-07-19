@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Tasks from "./Tasks";
 import { useSettingsStore, type Config } from "@/stores/settingsStore";
@@ -131,6 +131,68 @@ describe("Tasks", () => {
 
     expect(screen.queryByRole("button", { name: "Resume" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument();
+  });
+
+  it("indents a delegated child task under its parent in the list", async () => {
+    invokeMock.mockResolvedValueOnce([
+      task("parent", { goal: "Parent goal" }),
+      task("child", { goal: "Child goal", parent_task_id: "parent" }),
+    ]);
+
+    render(<Tasks />);
+
+    await waitFor(() => expect(screen.getByText("Child goal")).toBeInTheDocument());
+    const childButton = screen.getByText("Child goal").closest("button");
+    expect(childButton?.style.paddingLeft).toBe("26px");
+  });
+
+  it("shows the parent task's goal and a way to jump to it in a delegated task's detail", async () => {
+    useTaskStore.setState({
+      tasks: [
+        task("parent", { goal: "Parent goal" }),
+        task("child", { goal: "Child goal", parent_task_id: "parent", forced_role: "reviewer" }),
+      ],
+      selectedTaskId: "child",
+      watchedTask: task("child", {
+        goal: "Child goal",
+        parent_task_id: "parent",
+        forced_role: "reviewer",
+      }),
+    });
+
+    render(<Tasks />);
+
+    expect(screen.getByText("Role: reviewer")).toBeInTheDocument();
+    const detail = screen
+      .getByRole("heading", { name: "Child goal" })
+      .closest<HTMLElement>(".flex-col.gap-4")!;
+    expect(within(detail).getByText(/Delegated from:/)).toBeInTheDocument();
+    const parentLink = within(detail).getByRole("button", { name: "Parent goal" });
+
+    fireEvent.click(parentLink);
+
+    expect(invokeMock).toHaveBeenCalledWith("watch_task", { taskId: "parent" });
+  });
+
+  it("lists a task's subtasks in its detail pane, each selectable", async () => {
+    useTaskStore.setState({
+      tasks: [
+        task("parent", { goal: "Parent goal" }),
+        task("child", { goal: "Child goal", parent_task_id: "parent", state: "done" }),
+      ],
+      selectedTaskId: "parent",
+      watchedTask: task("parent", { goal: "Parent goal" }),
+    });
+
+    render(<Tasks />);
+
+    const detail = screen
+      .getByRole("heading", { name: "Parent goal" })
+      .closest<HTMLElement>(".flex-col.gap-4")!;
+    expect(within(detail).getByText("Subtasks (1)")).toBeInTheDocument();
+    fireEvent.click(within(detail).getByRole("button", { name: /Child goal/ }));
+
+    expect(invokeMock).toHaveBeenCalledWith("watch_task", { taskId: "child" });
   });
 
   it("submits the new task form with the goal and checkbox values", async () => {

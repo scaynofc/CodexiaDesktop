@@ -26,6 +26,7 @@ the Python runtime this app connects to).
 | [016](016-approval-queue-desktop-controls.md)      | Approval queue desktop controls: Task Center checkbox, live countdown, Log Center approval source |
 | [017](017-approval-awareness.md)                   | Approval awareness: sidebar badge + OS notification, fed by a background approval-watch loop |
 | [018](018-cost-budget-visibility.md)                | Cost budget visibility: Dashboard surfaces CodexiaCore's already-enforced max_task_cost_usd |
+| [019](019-task-delegation-visibility.md)            | Task delegation visibility: Task Center nests child tasks under their parent, Desktop-only, no Core change |
 | [020](020-approval-history-view.md)                 | Approval history view: Approval Center gains a History tab consuming CodexiaCore's already-built GET /approvals |
 
 New ADRs go here as `0NN-short-slug.md`, numbered sequentially, added to

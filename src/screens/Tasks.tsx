@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { buildTaskTree } from "@/lib/taskTree";
 import { cn } from "@/lib/utils";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useTaskStore, type Task, type TaskState } from "@/stores/taskStore";
@@ -106,17 +107,66 @@ function NewTaskForm({ onCreate, defaultProjectId }: NewTaskFormProps) {
 
 interface TaskDetailProps {
   task: Task;
+  /** The full current task list - used only to look up this task's parent
+   * (by `parent_task_id`) and children (by scanning for a matching
+   * `parent_task_id`), CodexiaCore's Faz 21 delegation fields. Neither
+   * lookup needs its own endpoint: `GET /tasks` already returns every
+   * task's full record - see docs/adr/019-task-delegation-visibility.md. */
+  tasks: Task[];
   onResume: () => void;
   onCancel: () => void;
+  onSelectTask: (taskId: string) => void;
 }
 
-function TaskDetail({ task, onResume, onCancel }: TaskDetailProps) {
+function TaskDetail({ task, tasks, onResume, onCancel, onSelectTask }: TaskDetailProps) {
+  const parentId = task.parent_task_id;
+  const parent = parentId ? (tasks.find((candidate) => candidate.id === parentId) ?? null) : null;
+  const children = tasks.filter((candidate) => candidate.parent_task_id === task.id);
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2">
         <h2 className="text-lg font-semibold">{task.goal}</h2>
         <Badge variant={STATE_BADGE_VARIANT[task.state]}>{task.state}</Badge>
+        {task.forced_role && <Badge variant="outline">Role: {task.forced_role}</Badge>}
       </div>
+
+      {parentId && (
+        <p className="text-sm text-muted-foreground">
+          Delegated from:{" "}
+          {parent ? (
+            <button
+              type="button"
+              className="underline underline-offset-2 hover:text-foreground"
+              onClick={() => onSelectTask(parentId)}
+            >
+              {parent.goal}
+            </button>
+          ) : (
+            <span className="italic">a task not in the current list</span>
+          )}
+        </p>
+      )}
+
+      {children.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <p className="text-sm font-medium">Subtasks ({children.length})</p>
+          <ul className="flex flex-col gap-1">
+            {children.map((child) => (
+              <li key={child.id}>
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1 text-left text-sm hover:bg-muted"
+                  onClick={() => onSelectTask(child.id)}
+                >
+                  <span className="truncate">{child.goal}</span>
+                  <Badge variant={STATE_BADGE_VARIANT[child.state]}>{child.state}</Badge>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {task.error && <p className="text-sm text-destructive">{task.error}</p>}
 
@@ -193,18 +243,22 @@ function Tasks() {
           {tasks.length === 0 ? (
             <p className="text-sm text-muted-foreground">No tasks yet.</p>
           ) : (
-            [...tasks].reverse().map((task) => (
+            buildTaskTree(tasks).map(({ task, depth }) => (
               <button
                 key={task.id}
                 type="button"
                 onClick={() => void selectTask(task.id)}
                 aria-current={task.id === selectedTaskId}
+                style={depth > 0 ? { paddingLeft: `${depth * 16 + 10}px` } : undefined}
                 className={cn(
                   "flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted",
                   task.id === selectedTaskId && "bg-muted",
                 )}
               >
-                <span className="truncate">{task.goal}</span>
+                <span className="flex min-w-0 items-center gap-1 truncate">
+                  {depth > 0 && <span className="text-muted-foreground">↳</span>}
+                  <span className="truncate">{task.goal}</span>
+                </span>
                 <Badge variant={STATE_BADGE_VARIANT[task.state]}>{task.state}</Badge>
               </button>
             ))
@@ -216,8 +270,10 @@ function Tasks() {
         {selectedTask ? (
           <TaskDetail
             task={selectedTask}
+            tasks={tasks}
             onResume={() => void resumeTask(selectedTask.id)}
             onCancel={() => void cancelTask(selectedTask.id)}
+            onSelectTask={(taskId) => void selectTask(taskId)}
           />
         ) : (
           <p className="text-sm text-muted-foreground">Select a task to see its details.</p>
