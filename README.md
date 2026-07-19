@@ -86,3 +86,10 @@ src/
 ├── components/ui/ shadcn/ui components (vendored, regenerated via `npx shadcn add`)
 └── App.tsx        Shell composition: router + sidebar + header + routed screen
 ```
+
+## Contributing
+
+Architectural decisions are recorded in [docs/adr/](docs/adr/000-index.md).
+The engineering principles this project holds itself to - root cause over
+workarounds, live verification before closing a phase, no architectural change
+without an ADR - are in [docs/ENGINEERING_STANDARDS.md](docs/ENGINEERING_STANDARDS.md).
