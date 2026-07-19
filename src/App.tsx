@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import AppHeader from "@/shell/AppHeader";
 import AppSidebar from "@/shell/AppSidebar";
 import Approvals from "@/screens/Approvals";
+import Capabilities from "@/screens/Capabilities";
 import Dashboard from "@/screens/Dashboard";
 import Log from "@/screens/Log";
 import Memory from "@/screens/Memory";
@@ -64,6 +65,7 @@ function App() {
                 <Route path="/approvals" element={<Approvals />} />
                 <Route path="/memory" element={<Memory />} />
                 <Route path="/logs" element={<Log />} />
+                <Route path="/capabilities" element={<Capabilities />} />
                 <Route path="/settings" element={<Settings />} />
               </Routes>
             </main>

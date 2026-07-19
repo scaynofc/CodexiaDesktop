@@ -11,6 +11,7 @@
 
 mod approvals;
 mod approvals_sse;
+mod capabilities;
 mod error;
 mod events;
 mod http;
@@ -23,6 +24,7 @@ mod tasks;
 
 pub use approvals::{Approval, ApprovalStatus, ApprovalType};
 pub use approvals_sse::{watch_pending_approvals, ApprovalStreamEvent};
+pub use capabilities::{Capability, CapabilitySource};
 pub use error::BridgeError;
 pub use events::{SystemEvent, SystemEventSource, SystemEventType};
 pub use http::{CoreHttpClient, HealthResponse};

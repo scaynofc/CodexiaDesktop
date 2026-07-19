@@ -7,11 +7,12 @@ use std::sync::Arc;
 use tauri::{AppHandle, Emitter, State};
 
 use crate::core_bridge::{
-    Approval, ApprovalStatus, CancelResult, CoreHttpClient, MemoryItem, MetricsSnapshot,
-    OllamaRuntimeStatus, SystemEvent, Task, TaskCreated,
+    Approval, ApprovalStatus, CancelResult, Capability, CoreHttpClient, MemoryItem,
+    MetricsSnapshot, OllamaRuntimeStatus, SystemEvent, Task, TaskCreated,
 };
 use crate::services::approval_watch::SharedPendingApprovals;
 use crate::services::approvals;
+use crate::services::capabilities;
 use crate::services::config::{self, Config, SharedConfig};
 use crate::services::connection::{ConnectionStatus, SharedConnectionStatus};
 use crate::services::events;
@@ -221,6 +222,19 @@ pub async fn get_ollama_runtime(
     client: State<'_, Arc<CoreHttpClient>>,
 ) -> Result<OllamaRuntimeStatus, String> {
     runtime::fetch_ollama_runtime(client.inner())
+        .await
+        .map_err(|error| error.to_string())
+}
+
+/// Fetches CodexiaCore's currently-registered tool list (built-in, MCP,
+/// browser) fresh - called both on Capability Registry's mount and by its
+/// "Refresh" button, same shape as `get_ollama_runtime` (see
+/// `services::capabilities`).
+#[tauri::command]
+pub async fn get_capabilities(
+    client: State<'_, Arc<CoreHttpClient>>,
+) -> Result<Vec<Capability>, String> {
+    capabilities::fetch_capabilities(client.inner())
         .await
         .map_err(|error| error.to_string())
 }

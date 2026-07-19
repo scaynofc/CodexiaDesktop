@@ -4,6 +4,7 @@
 
 pub mod approval_watch;
 pub mod approvals;
+pub mod capabilities;
 pub mod config;
 pub mod connection;
 pub mod events;

@@ -8,6 +8,7 @@ import {
   ScrollText,
   Settings as SettingsIcon,
   ShieldCheck,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 
@@ -20,6 +21,7 @@ export type ScreenId =
   | "approvals"
   | "memory"
   | "logs"
+  | "capabilities"
   | "settings";
 
 export interface NavItem {
@@ -53,6 +55,13 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
   { id: "memory", label: "Memory Center", path: "/memory", icon: Boxes, enabled: true },
   { id: "logs", label: "Log Center", path: "/logs", icon: ScrollText, enabled: true },
+  {
+    id: "capabilities",
+    label: "Capability Registry",
+    path: "/capabilities",
+    icon: Wrench,
+    enabled: true,
+  },
   { id: "settings", label: "Settings", path: "/settings", icon: SettingsIcon, enabled: true },
 ];
 

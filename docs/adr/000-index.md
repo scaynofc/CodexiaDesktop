@@ -29,6 +29,7 @@ the Python runtime this app connects to).
 | [019](019-task-delegation-visibility.md)            | Task delegation visibility: Task Center nests child tasks under their parent, Desktop-only, no Core change |
 | [020](020-approval-history-view.md)                 | Approval history view: Approval Center gains a History tab consuming CodexiaCore's already-built GET /approvals |
 | [021](021-lesson-approval-type.md)                  | Lesson approval type support: mirrors CodexiaCore's new ApprovalType.LESSON before any lesson approval could reach Desktop |
+| [022](022-capability-registry.md)                   | Capability Registry: new screen surfacing CodexiaCore's GET /capabilities (built-in/MCP tool list) |
 
 New ADRs go here as `0NN-short-slug.md`, numbered sequentially, added to
 this table.

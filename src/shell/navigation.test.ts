@@ -12,7 +12,7 @@ describe("NAV_ITEMS", () => {
     expect(new Set(paths).size).toBe(paths.length);
   });
 
-  it("has every screen built and enabled, as of Phase 10 (Approval Center)", () => {
+  it("has every screen built and enabled, as of Wave 3 (Capability Registry)", () => {
     const enabledIds = NAV_ITEMS.filter((item) => item.enabled).map((item) => item.id);
     expect(enabledIds).toEqual([
       "dashboard",
@@ -23,6 +23,7 @@ describe("NAV_ITEMS", () => {
       "approvals",
       "memory",
       "logs",
+      "capabilities",
       "settings",
     ]);
   });
@@ -43,6 +44,7 @@ describe("findNavItemByPath", () => {
     expect(findNavItemByPath("/approvals")?.id).toBe("approvals");
     expect(findNavItemByPath("/memory")?.id).toBe("memory");
     expect(findNavItemByPath("/logs")?.id).toBe("logs");
+    expect(findNavItemByPath("/capabilities")?.id).toBe("capabilities");
     expect(findNavItemByPath("/settings")?.id).toBe("settings");
   });
 
