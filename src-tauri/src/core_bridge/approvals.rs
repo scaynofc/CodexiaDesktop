@@ -16,6 +16,11 @@ use super::http::CoreHttpClient;
 pub enum ApprovalType {
     Tool,
     Memory,
+    /// Faz 50 in CodexiaCore (ADR-025 there): a proposed durable lesson
+    /// from the learning loop (GovernedLessonWriter), gated the same way
+    /// as a memory write - same payload shape (key/existing_value/
+    /// new_value), only the type differs.
+    Lesson,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -209,10 +214,36 @@ mod tests {
     }
 
     #[test]
+    fn deserializes_a_decided_lesson_approval() {
+        let raw = r#"{
+            "id": "appr-3",
+            "task_id": "task-1",
+            "step_id": 4,
+            "type": "lesson",
+            "payload": {"key": "timeout:writer", "existing_value": null, "new_value": "Shorten the prompt."},
+            "status": "approved",
+            "created_at": "2026-07-19T00:00:00+00:00",
+            "decided_at": "2026-07-19T00:01:00+00:00",
+            "expires_at": null,
+            "decision_reason": null
+        }"#;
+
+        let approval: Approval = serde_json::from_str(raw).unwrap();
+
+        assert_eq!(approval.approval_type, ApprovalType::Lesson);
+        assert_eq!(approval.payload["key"], "timeout:writer");
+        assert_eq!(approval.status, ApprovalStatus::Approved);
+    }
+
+    #[test]
     fn approval_type_and_status_serialize_to_lowercase() {
         assert_eq!(
             serde_json::to_string(&ApprovalType::Tool).unwrap(),
             "\"tool\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ApprovalType::Lesson).unwrap(),
+            "\"lesson\""
         );
         assert_eq!(
             serde_json::to_string(&ApprovalStatus::Expired).unwrap(),

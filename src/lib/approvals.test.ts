@@ -12,6 +12,7 @@ describe("approvalTypeLabel", () => {
   it("labels every type", () => {
     expect(approvalTypeLabel("tool")).toBe("Tool call");
     expect(approvalTypeLabel("memory")).toBe("Memory write");
+    expect(approvalTypeLabel("lesson")).toBe("Lesson");
   });
 });
 

@@ -9,6 +9,10 @@ import type { Approval, ApprovalStatus, ApprovalType } from "@/stores/approvalSt
 const TYPE_LABEL: Record<ApprovalType, string> = {
   tool: "Tool call",
   memory: "Memory write",
+  /** CodexiaCore's learning loop (GovernedLessonWriter, ADR-025 there) -
+   * a proposed durable lesson from a rejected step's reflection, gated
+   * the same way as a memory write. */
+  lesson: "Lesson",
 };
 
 export function approvalTypeLabel(type: ApprovalType): string {

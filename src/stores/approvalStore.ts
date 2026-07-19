@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { create } from "zustand";
 
-export type ApprovalType = "tool" | "memory";
+export type ApprovalType = "tool" | "memory" | "lesson";
 export type ApprovalStatus = "pending" | "approved" | "rejected" | "expired" | "cancelled";
 
 export interface Approval {

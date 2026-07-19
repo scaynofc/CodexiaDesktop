@@ -28,6 +28,7 @@ the Python runtime this app connects to).
 | [018](018-cost-budget-visibility.md)                | Cost budget visibility: Dashboard surfaces CodexiaCore's already-enforced max_task_cost_usd |
 | [019](019-task-delegation-visibility.md)            | Task delegation visibility: Task Center nests child tasks under their parent, Desktop-only, no Core change |
 | [020](020-approval-history-view.md)                 | Approval history view: Approval Center gains a History tab consuming CodexiaCore's already-built GET /approvals |
+| [021](021-lesson-approval-type.md)                  | Lesson approval type support: mirrors CodexiaCore's new ApprovalType.LESSON before any lesson approval could reach Desktop |
 
 New ADRs go here as `0NN-short-slug.md`, numbered sequentially, added to
 this table.
