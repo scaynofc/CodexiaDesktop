@@ -86,7 +86,7 @@ pattern already established.
   provide.
 - **Emitting the full `Approval[]` list to the frontend and deriving
   `pendingCount` there** - this is in fact what happens (`approvals-
-  changed`'s payload is the full list); `pendingCount` is derived
+changed`'s payload is the full list); `pendingCount` is derived
   client-side from `event.payload.length` rather than the Rust side
   pre-computing a count, keeping the wire event shape identical to what
   a future consumer wanting more than a count (e.g. per-item detail)
@@ -99,7 +99,7 @@ pattern already established.
 
 ## Consequences
 
-- The sidebar badge and OS notifications depend on a *second*,
+- The sidebar badge and OS notifications depend on a _second_,
   independent SSE connection to CodexiaCore (the first being Task
   Center's `watch_task`) - two long-lived connections per running
   Desktop instance instead of one. CodexiaCore's own `ApprovalStore`/

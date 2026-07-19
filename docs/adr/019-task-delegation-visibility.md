@@ -38,6 +38,7 @@ one wrongly-un-nested row.
 
 **`TaskDetail` gains three additions**, all computed by scanning the
 already-fetched `tasks` list (no new store field, no new fetch):
+
 - A `Role: {forced_role}` badge next to the state badge, when set.
 - A "Delegated from: {parent goal}" line, linking to the parent task
   (falls back to "a task not in the current list" if the parent was

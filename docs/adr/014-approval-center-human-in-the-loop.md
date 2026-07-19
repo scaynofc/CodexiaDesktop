@@ -90,10 +90,11 @@ optional text field already scoped to one visible card.
 every other screen test's actual convention (`Log.test.tsx`,
 `Memory.test.tsx`), not a store-mocking approach. The screen-scoped poll
 interval is tested with `vi.useFakeTimers()`/`vi.advanceTimersByTimeAsync`
+
 - confirming both that a poll tick re-fetches while mounted and that
-`clearInterval` on unmount actually stops it, since an interval leak here
-would be a real, if quiet, resource bug (an orphaned timer still calling
-`invoke()` after the user navigates away).
+  `clearInterval` on unmount actually stops it, since an interval leak here
+  would be a real, if quiet, resource bug (an orphaned timer still calling
+  `invoke()` after the user navigates away).
 
 ## Alternatives Considered
 

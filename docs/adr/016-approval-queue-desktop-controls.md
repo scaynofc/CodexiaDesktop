@@ -44,7 +44,7 @@ internally via `Date.now()`, keeping it directly unit-testable exactly
 like every other formatter in that file. `Approvals.tsx` supplies the
 ticking `now` via its own second `useEffect`/`setInterval` (1000ms,
 `COUNTDOWN_TICK_MS`), separate from `POLL_INTERVAL_MS` (3000ms): the
-approvals *list* only needs to change when the server's state changes,
+approvals _list_ only needs to change when the server's state changes,
 but a countdown that only moved every 3s would look broken/jumpy. Only
 rendered for `status === "pending"` rows - a decided approval's countdown
 is meaningless.

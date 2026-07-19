@@ -8,7 +8,7 @@ CodexiaCore has enforced a per-task cost ceiling
 (`settings.max_task_cost_usd`) since its own Faz 13, and a task
 exceeding it already lands `BLOCKED` with a clear `task.error` message
 Task Center already renders generically. What a Desktop user has never
-been able to see is whether a ceiling is configured *at all*, before a
+been able to see is whether a ceiling is configured _at all_, before a
 task happens to hit it - a roadmap review flagged this as another
 "already works, but invisible" gap, same shape as `enable_approval_queue`
 before Phase 10's checkbox. CodexiaCore's own ADR-023 adds the value to
@@ -36,7 +36,7 @@ be premature structure for something this small.
   list is exactly the right home for "a fact about this Core connection."
 - **Showing it only when a task actually gets blocked by it** - rejected:
   defeats the point - the gap this phase closes is specifically "know the
-  ceiling exists *before* hitting it," not "explain it after the fact"
+  ceiling exists _before_ hitting it," not "explain it after the fact"
   (which `task.error` already does).
 
 ## Consequences

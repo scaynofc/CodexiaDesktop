@@ -167,7 +167,10 @@ pub fn run() {
                             let body = if new_approvals.len() == 1 {
                                 "A new approval is waiting for your decision.".to_string()
                             } else {
-                                format!("{} new approvals are waiting for your decision.", new_approvals.len())
+                                format!(
+                                    "{} new approvals are waiting for your decision.",
+                                    new_approvals.len()
+                                )
                             };
                             let _ = notify_handle
                                 .notification()

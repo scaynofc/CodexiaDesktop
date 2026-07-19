@@ -7,11 +7,12 @@
 CodexiaCore's ADR-026 fixed a visibility gap: `Engine.tools` (a
 `ToolRegistry`) already holds every built-in, MCP-sourced, and browser
 tool the engine can invoke, but nothing ever read that registry back out
+
 - not to the planning LLM (`PlannerAgent.ALLOWED_TOOLS = ["web_search"]`
-is hardcoded, a separate fix tracked as Wave 3's third item), and not to
-any Desktop screen. A user connecting an MCP server via CodexiaCore's
-config had no way to see, from Desktop, that it worked or what tools it
-added.
+  is hardcoded, a separate fix tracked as Wave 3's third item), and not to
+  any Desktop screen. A user connecting an MCP server via CodexiaCore's
+  config had no way to see, from Desktop, that it worked or what tools it
+  added.
 
 CodexiaCore's new `GET /capabilities` (ADR-026 there) closes the second
 half: a read-only snapshot of the registry, each entry carrying
@@ -98,7 +99,7 @@ of those screens.
   names/descriptions, "Built-in" source badges, "Requires approval"
   shown only on `write_file`/`run_command` (matching CodexiaCore's real
   response exactly, cross-checked against a direct `curl
-  /capabilities`). Expanded `read_file`'s Parameters `<details>` and
+/capabilities`). Expanded `read_file`'s Parameters `<details>` and
   confirmed the real JSON schema rendered correctly. Opened DevTools
   (F12) and confirmed the Console reported "No Issues" - zero errors
   throughout. CodexiaCore's ADR-026 has the server-side half of this same

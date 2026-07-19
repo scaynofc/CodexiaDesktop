@@ -116,7 +116,7 @@ manual pass could have caught:
 
 1. **CodexiaCore**: every `background: true` task silently failed to
    persist at all (`sqlite3.ProgrammingError: SQLite objects created in a
-   thread can only be used in that same thread`) - `get_orchestrator()`/
+thread can only be used in that same thread`) - `get_orchestrator()`/
    `get_engine()` are sync FastAPI dependencies, so lazily constructing
    their `Sqlite*Store`s runs on a threadpool worker thread, but
    `BackgroundTaskRunner`'s `asyncio.create_task()`-driven execution (and
@@ -145,8 +145,8 @@ correctly in the actual running app.
 
 ## Consequences
 
-- No CodexiaCore *API* changes were needed for this phase - the existing
-  REST/SSE surface was already sufficient. A CodexiaCore *bug fix* (above)
+- No CodexiaCore _API_ changes were needed for this phase - the existing
+  REST/SSE surface was already sufficient. A CodexiaCore _bug fix_ (above)
   was needed before that surface actually worked under real background
   execution, which is a different thing from needing new API surface.
 - Every Task Center action (create/resume/cancel) is a two-step Desktop

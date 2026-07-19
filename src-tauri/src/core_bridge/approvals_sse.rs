@@ -37,8 +37,8 @@ pub fn parse_approval_stream_event(
 ) -> Result<ApprovalStreamEvent, BridgeError> {
     match event_name {
         "approvals" => {
-            let approvals: Vec<Approval> =
-                serde_json::from_str(data).map_err(|e| BridgeError::DecodeFailure(e.to_string()))?;
+            let approvals: Vec<Approval> = serde_json::from_str(data)
+                .map_err(|e| BridgeError::DecodeFailure(e.to_string()))?;
             Ok(ApprovalStreamEvent::Snapshot(approvals))
         }
         "timeout" => Ok(ApprovalStreamEvent::Timeout),

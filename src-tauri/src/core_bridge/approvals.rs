@@ -288,7 +288,10 @@ mod tests {
 
         assert_eq!(
             params,
-            vec![("limit", "50".to_string()), ("status", "rejected".to_string())]
+            vec![
+                ("limit", "50".to_string()),
+                ("status", "rejected".to_string())
+            ]
         );
     }
 
