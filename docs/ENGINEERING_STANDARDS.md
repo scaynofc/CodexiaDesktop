@@ -11,8 +11,9 @@ This file is deliberately near-identical to CodexiaCore's own
 `docs/ENGINEERING_STANDARDS.md` - same six principles, same project
 culture, different repo's evidence. If a future change seems to require
 breaking one of these, that's a signal to stop and discuss it explicitly
+
 - not a reason to quietly skip the standard for one phase "just this
-once."
+  once."
 
 ## 1. Fix the root cause. Never work around it.
 
