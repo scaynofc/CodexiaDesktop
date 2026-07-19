@@ -6,7 +6,13 @@
 //! `connectionStore`/`taskStore`, which are always-on regardless of the
 //! active screen) - see docs/adr/014-approval-center-human-in-the-loop.md.
 
-use crate::core_bridge::{Approval, BridgeError, CoreHttpClient};
+use crate::core_bridge::{Approval, ApprovalStatus, BridgeError, CoreHttpClient};
+
+/// `GET /approvals`'s own default when a caller doesn't need pagination -
+/// matches CodexiaCore's own `limit: int = 100` default so this app's
+/// history view and a raw `curl` both see the same "recent enough" window
+/// without Desktop needing its own opinion on the number.
+const HISTORY_LIMIT: u32 = 100;
 
 /// What Core Bridge exposes for approvals - a trait (not the concrete
 /// `CoreHttpClient`) so these functions can be tested with a scripted
@@ -14,6 +20,12 @@ use crate::core_bridge::{Approval, BridgeError, CoreHttpClient};
 pub trait ApprovalClient: Send + Sync {
     fn list_pending_approvals(
         &self,
+    ) -> impl std::future::Future<Output = Result<Vec<Approval>, BridgeError>> + Send;
+
+    fn list_approval_history(
+        &self,
+        status: Option<ApprovalStatus>,
+        limit: u32,
     ) -> impl std::future::Future<Output = Result<Vec<Approval>, BridgeError>> + Send;
 
     fn approve_approval(
@@ -32,6 +44,14 @@ pub trait ApprovalClient: Send + Sync {
 impl ApprovalClient for CoreHttpClient {
     async fn list_pending_approvals(&self) -> Result<Vec<Approval>, BridgeError> {
         CoreHttpClient::list_pending_approvals(self).await
+    }
+
+    async fn list_approval_history(
+        &self,
+        status: Option<ApprovalStatus>,
+        limit: u32,
+    ) -> Result<Vec<Approval>, BridgeError> {
+        CoreHttpClient::list_approval_history(self, status, limit).await
     }
 
     async fn approve_approval(
@@ -54,6 +74,14 @@ impl ApprovalClient for CoreHttpClient {
 impl<C: ApprovalClient> ApprovalClient for std::sync::Arc<C> {
     async fn list_pending_approvals(&self) -> Result<Vec<Approval>, BridgeError> {
         C::list_pending_approvals(self).await
+    }
+
+    async fn list_approval_history(
+        &self,
+        status: Option<ApprovalStatus>,
+        limit: u32,
+    ) -> Result<Vec<Approval>, BridgeError> {
+        C::list_approval_history(self, status, limit).await
     }
 
     async fn approve_approval(
@@ -79,6 +107,19 @@ pub async fn fetch_pending_approvals<C: ApprovalClient>(
     client: &C,
 ) -> Result<Vec<Approval>, BridgeError> {
     client.list_pending_approvals().await
+}
+
+/// Fetches the full approval history (every status, newest first),
+/// optionally narrowed to one status - the History tab's counterpart to
+/// [`fetch_pending_approvals`] above. Screen-scoped, fetched on-demand
+/// (tab select / status filter change / Refresh), not polled - a decided
+/// approval never changes again, so there's nothing to poll for. See
+/// docs/adr/020-approval-history-view.md.
+pub async fn fetch_approval_history<C: ApprovalClient>(
+    client: &C,
+    status: Option<ApprovalStatus>,
+) -> Result<Vec<Approval>, BridgeError> {
+    client.list_approval_history(status, HISTORY_LIMIT).await
 }
 
 /// Approves an approval, then re-fetches the pending list so the caller
@@ -129,6 +170,8 @@ mod tests {
 
     struct ScriptedClient {
         list_responses: Mutex<std::vec::IntoIter<Result<Vec<Approval>, BridgeError>>>,
+        history_response: Result<Vec<Approval>, BridgeError>,
+        history_calls: Mutex<Vec<(Option<ApprovalStatus>, u32)>>,
         decide_response: Result<Approval, BridgeError>,
         approved_calls: Mutex<Vec<(String, Option<String>)>>,
         rejected_calls: Mutex<Vec<(String, Option<String>)>>,
@@ -138,10 +181,17 @@ mod tests {
         fn new(list_responses: Vec<Result<Vec<Approval>, BridgeError>>) -> Self {
             Self {
                 list_responses: Mutex::new(list_responses.into_iter()),
+                history_response: Ok(Vec::new()),
+                history_calls: Mutex::new(Vec::new()),
                 decide_response: Ok(approval("appr-1")),
                 approved_calls: Mutex::new(Vec::new()),
                 rejected_calls: Mutex::new(Vec::new()),
             }
+        }
+
+        fn with_history(mut self, response: Result<Vec<Approval>, BridgeError>) -> Self {
+            self.history_response = response;
+            self
         }
     }
 
@@ -152,6 +202,15 @@ mod tests {
                 .unwrap()
                 .next()
                 .unwrap_or(Ok(Vec::new()))
+        }
+
+        async fn list_approval_history(
+            &self,
+            status: Option<ApprovalStatus>,
+            limit: u32,
+        ) -> Result<Vec<Approval>, BridgeError> {
+            self.history_calls.lock().unwrap().push((status, limit));
+            self.history_response.clone()
         }
 
         async fn approve_approval(
@@ -225,5 +284,38 @@ mod tests {
             [("appr-1".to_string(), None)]
         );
         assert!(approvals.is_empty());
+    }
+
+    #[tokio::test]
+    async fn fetch_approval_history_returns_whatever_the_client_provides() {
+        let mut decided = approval("appr-5");
+        decided.status = ApprovalStatus::Rejected;
+        let client = ScriptedClient::new(vec![]).with_history(Ok(vec![decided]));
+
+        let history = fetch_approval_history(&client, None).await.unwrap();
+
+        assert_eq!(history.len(), 1);
+        assert_eq!(history[0].status, ApprovalStatus::Rejected);
+    }
+
+    #[tokio::test]
+    async fn fetch_approval_history_passes_the_status_filter_and_default_limit_through() {
+        let client = ScriptedClient::new(vec![]).with_history(Ok(Vec::new()));
+
+        let _ = fetch_approval_history(&client, Some(ApprovalStatus::Cancelled)).await;
+
+        assert_eq!(
+            client.history_calls.lock().unwrap().as_slice(),
+            [(Some(ApprovalStatus::Cancelled), HISTORY_LIMIT)]
+        );
+    }
+
+    #[tokio::test]
+    async fn fetch_approval_history_propagates_a_transport_error() {
+        let client = ScriptedClient::new(vec![]).with_history(Err(BridgeError::ConnectionRefused));
+
+        let result = fetch_approval_history(&client, None).await;
+
+        assert_eq!(result, Err(BridgeError::ConnectionRefused));
     }
 }

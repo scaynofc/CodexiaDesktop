@@ -7,8 +7,8 @@ use std::sync::Arc;
 use tauri::{AppHandle, Emitter, State};
 
 use crate::core_bridge::{
-    Approval, CancelResult, CoreHttpClient, MemoryItem, MetricsSnapshot, OllamaRuntimeStatus,
-    SystemEvent, Task, TaskCreated,
+    Approval, ApprovalStatus, CancelResult, CoreHttpClient, MemoryItem, MetricsSnapshot,
+    OllamaRuntimeStatus, SystemEvent, Task, TaskCreated,
 };
 use crate::services::approval_watch::SharedPendingApprovals;
 use crate::services::approvals;
@@ -363,6 +363,21 @@ pub async fn reject_approval(
 #[tauri::command]
 pub fn get_pending_approval_count(state: State<SharedPendingApprovals>) -> usize {
     state.lock().unwrap().len()
+}
+
+/// Fetches the full approval history (every status, newest first),
+/// optionally narrowed to one status - History tab's counterpart to
+/// [`get_pending_approvals`]. Fetched on-demand (tab select / filter
+/// change / Refresh), not polled - see `services::approvals::
+/// fetch_approval_history` and docs/adr/020-approval-history-view.md.
+#[tauri::command]
+pub async fn get_approval_history(
+    status: Option<ApprovalStatus>,
+    client: State<'_, Arc<CoreHttpClient>>,
+) -> Result<Vec<Approval>, String> {
+    approvals::fetch_approval_history(client.inner(), status)
+        .await
+        .map_err(|error| error.to_string())
 }
 
 #[tauri::command]

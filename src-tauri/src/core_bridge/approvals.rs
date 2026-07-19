@@ -28,6 +28,22 @@ pub enum ApprovalStatus {
     Cancelled,
 }
 
+impl ApprovalStatus {
+    /// The lowercase wire value CodexiaCore's `?status=` query param expects
+    /// (`GET /approvals`) - matches this enum's own `#[serde(rename_all)]`
+    /// mapping, kept as an explicit match rather than reusing the Serialize
+    /// impl so a query-string value never picks up JSON quoting.
+    fn as_query_value(self) -> &'static str {
+        match self {
+            ApprovalStatus::Pending => "pending",
+            ApprovalStatus::Approved => "approved",
+            ApprovalStatus::Rejected => "rejected",
+            ApprovalStatus::Expired => "expired",
+            ApprovalStatus::Cancelled => "cancelled",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Approval {
     pub id: String,
@@ -56,9 +72,45 @@ struct ApprovalDecisionRequest<'a> {
     reason: Option<&'a str>,
 }
 
+/// Pure query-param builder for `GET /approvals`, kept separate from
+/// `list_approval_history` below so the actual param shape (limit always
+/// present, status only when filtering) is directly unit-testable without
+/// a network call.
+fn history_query_params(status: Option<ApprovalStatus>, limit: u32) -> Vec<(&'static str, String)> {
+    let mut params = vec![("limit", limit.to_string())];
+    if let Some(status) = status {
+        params.push(("status", status.as_query_value().to_string()));
+    }
+    params
+}
+
 impl CoreHttpClient {
     pub async fn list_pending_approvals(&self) -> Result<Vec<Approval>, BridgeError> {
         let response = self.get_request("/approvals/pending").send().await?;
+        if !response.status().is_success() {
+            return Err(BridgeError::UnexpectedStatus(response.status().as_u16()));
+        }
+        response
+            .json::<Vec<Approval>>()
+            .await
+            .map_err(BridgeError::from)
+    }
+
+    /// `GET /approvals` - every approval regardless of status (newest
+    /// request first), optionally narrowed to one via `status`. Distinct
+    /// from `list_pending_approvals` (`/approvals/pending`, pending-only) -
+    /// see CodexiaCore's docs/adr/022-approval-history.md and this repo's
+    /// docs/adr/020-approval-history-view.md.
+    pub async fn list_approval_history(
+        &self,
+        status: Option<ApprovalStatus>,
+        limit: u32,
+    ) -> Result<Vec<Approval>, BridgeError> {
+        let response = self
+            .get_request("/approvals")
+            .query(&history_query_params(status, limit))
+            .send()
+            .await?;
         if !response.status().is_success() {
             return Err(BridgeError::UnexpectedStatus(response.status().as_u16()));
         }
@@ -190,5 +242,48 @@ mod tests {
         let json = serde_json::to_value(&body).unwrap();
 
         assert_eq!(json["reason"], "Looks fine");
+    }
+
+    #[test]
+    fn history_query_params_always_includes_limit_and_omits_status_when_unset() {
+        let params = history_query_params(None, 100);
+
+        assert_eq!(params, vec![("limit", "100".to_string())]);
+    }
+
+    #[test]
+    fn history_query_params_includes_status_when_filtering() {
+        let params = history_query_params(Some(ApprovalStatus::Rejected), 50);
+
+        assert_eq!(
+            params,
+            vec![("limit", "50".to_string()), ("status", "rejected".to_string())]
+        );
+    }
+
+    #[test]
+    fn deserializes_a_real_approval_history_list_with_mixed_statuses() {
+        let raw = r#"[
+            {
+                "id": "appr-3", "task_id": "task-2", "step_id": 1, "type": "tool",
+                "payload": {"name": "run_command"}, "status": "cancelled",
+                "created_at": "2026-07-18T00:00:00+00:00",
+                "decided_at": "2026-07-18T00:00:05+00:00", "expires_at": null,
+                "decision_reason": "Task was cancelled."
+            },
+            {
+                "id": "appr-4", "task_id": null, "step_id": null, "type": "memory",
+                "payload": {"key": "stack"}, "status": "approved",
+                "created_at": "2026-07-17T00:00:00+00:00",
+                "decided_at": "2026-07-17T00:00:10+00:00", "expires_at": null,
+                "decision_reason": null
+            }
+        ]"#;
+
+        let approvals: Vec<Approval> = serde_json::from_str(raw).unwrap();
+
+        assert_eq!(approvals.len(), 2);
+        assert_eq!(approvals[0].status, ApprovalStatus::Cancelled);
+        assert_eq!(approvals[1].status, ApprovalStatus::Approved);
     }
 }

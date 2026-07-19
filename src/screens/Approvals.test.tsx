@@ -29,7 +29,15 @@ function approval(overrides: Partial<Approval> = {}): Approval {
 }
 
 beforeEach(() => {
-  useApprovalStore.setState({ approvals: [], fetchState: "idle", error: null, decidingIds: [] });
+  useApprovalStore.setState({
+    approvals: [],
+    fetchState: "idle",
+    error: null,
+    decidingIds: [],
+    history: [],
+    historyFetchState: "idle",
+    historyError: null,
+  });
   invokeMock.mockReset();
   invokeMock.mockResolvedValue([]);
 });
@@ -53,7 +61,9 @@ describe("Approvals", () => {
     render(<Approvals />);
 
     await waitFor(() => expect(screen.getByText("Tool call")).toBeInTheDocument());
-    expect(screen.getByText("Pending")).toBeInTheDocument();
+    // "Pending" also names the tab button, so two matches are expected here:
+    // the tab and this approval's own status badge.
+    expect(screen.getAllByText("Pending")).toHaveLength(2);
     expect(screen.getByText(/Task: task-1/)).toBeInTheDocument();
     expect(screen.getByText(/Step 2/)).toBeInTheDocument();
     expect(screen.getByText(/write_file/)).toBeInTheDocument();
@@ -232,6 +242,70 @@ describe("Approvals", () => {
       });
 
       expect(screen.queryByText(/Expires in/)).not.toBeInTheDocument();
+    });
+  });
+
+  describe("History tab", () => {
+    it("does not fetch history until the History tab is selected", async () => {
+      render(<Approvals />);
+      await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("get_pending_approvals"));
+
+      expect(invokeMock).not.toHaveBeenCalledWith("get_approval_history", expect.anything());
+    });
+
+    it("fetches and renders history once the History tab is selected", async () => {
+      invokeMock.mockResolvedValueOnce([]); // get_pending_approvals on mount
+      invokeMock.mockResolvedValueOnce([
+        approval({
+          status: "rejected",
+          decided_at: "2026-07-18T12:05:00+00:00",
+          decision_reason: "Looks wrong",
+        }),
+      ]);
+
+      render(<Approvals />);
+      fireEvent.click(screen.getByText("History"));
+
+      await waitFor(() =>
+        expect(invokeMock).toHaveBeenCalledWith("get_approval_history", { status: null }),
+      );
+      expect(await screen.findByText("Reason: Looks wrong")).toBeInTheDocument();
+    });
+
+    it("shows an empty-state message when there is no history yet", async () => {
+      render(<Approvals />);
+      fireEvent.click(screen.getByText("History"));
+
+      await waitFor(() => expect(screen.getByText("No approval history yet.")).toBeInTheDocument());
+    });
+
+    it("does not render Approve/Reject actions for a history entry", async () => {
+      invokeMock.mockResolvedValueOnce([]); // get_pending_approvals on mount
+      invokeMock.mockResolvedValueOnce([approval({ status: "approved" })]);
+
+      render(<Approvals />);
+      fireEvent.click(screen.getByText("History"));
+
+      await waitFor(() => expect(screen.getAllByText("Approved")).toHaveLength(2));
+      expect(screen.queryByRole("button", { name: "Approve" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Reject" })).not.toBeInTheDocument();
+    });
+
+    it("re-fetches with the selected status filter", async () => {
+      invokeMock.mockResolvedValueOnce([]); // get_pending_approvals on mount
+      invokeMock.mockResolvedValue([]); // every subsequent history fetch
+
+      render(<Approvals />);
+      fireEvent.click(screen.getByText("History"));
+      await waitFor(() =>
+        expect(invokeMock).toHaveBeenCalledWith("get_approval_history", { status: null }),
+      );
+
+      fireEvent.click(screen.getByText("Cancelled"));
+
+      await waitFor(() =>
+        expect(invokeMock).toHaveBeenCalledWith("get_approval_history", { status: "cancelled" }),
+      );
     });
   });
 });

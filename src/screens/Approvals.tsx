@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   approvalStatusBadgeClassName,
   approvalStatusLabel,
@@ -9,7 +10,7 @@ import {
   formatApprovalPayload,
   formatApprovalTimestamp,
 } from "@/lib/approvals";
-import { useApprovalStore, type Approval } from "@/stores/approvalStore";
+import { useApprovalStore, type Approval, type ApprovalStatus } from "@/stores/approvalStore";
 
 /** How often Approval Center re-polls while it's the active screen - short
  * enough to feel responsive against CodexiaCore's own
@@ -89,6 +90,51 @@ function ApprovalCard({ approval, now, deciding, onApprove, onReject }: Approval
   );
 }
 
+interface HistoryCardProps {
+  approval: Approval;
+}
+
+/** Read-only counterpart to `ApprovalCard` - a decided approval has
+ * nothing left to act on, so no reason input, no Approve/Reject buttons,
+ * no countdown (it's already resolved). Shows `decided_at` and
+ * `decision_reason` instead, since those are what a history entry is
+ * actually for. */
+function HistoryCard({ approval }: HistoryCardProps) {
+  return (
+    <li className="flex flex-col gap-2 rounded-md border border-border p-3 text-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="outline">{approvalTypeLabel(approval.type)}</Badge>
+        <Badge variant="outline" className={approvalStatusBadgeClassName(approval.status)}>
+          {approvalStatusLabel(approval.status)}
+        </Badge>
+        <span className="ml-auto text-xs text-muted-foreground">
+          {formatApprovalTimestamp(approval.decided_at ?? approval.created_at)}
+        </span>
+      </div>
+      {(approval.task_id || approval.step_id !== null) && (
+        <p className="text-xs text-muted-foreground">
+          {approval.task_id && <>Task: {approval.task_id} </>}
+          {approval.step_id !== null && <>· Step {approval.step_id}</>}
+        </p>
+      )}
+      {approval.decision_reason && (
+        <p className="text-xs text-muted-foreground">Reason: {approval.decision_reason}</p>
+      )}
+      <pre className="max-h-40 overflow-auto rounded-md bg-muted p-2 text-xs">
+        {formatApprovalPayload(approval.payload)}
+      </pre>
+    </li>
+  );
+}
+
+const HISTORY_STATUS_FILTERS: Array<{ label: string; value: ApprovalStatus | undefined }> = [
+  { label: "All", value: undefined },
+  { label: "Approved", value: "approved" },
+  { label: "Rejected", value: "rejected" },
+  { label: "Expired", value: "expired" },
+  { label: "Cancelled", value: "cancelled" },
+];
+
 /**
  * Phase 10 (its original slot, deferred twice - see
  * docs/adr/013-settings-local-desktop-configuration.md and CodexiaCore's
@@ -115,7 +161,13 @@ function Approvals() {
   const fetchApprovals = useApprovalStore((state) => state.fetchApprovals);
   const approve = useApprovalStore((state) => state.approve);
   const reject = useApprovalStore((state) => state.reject);
+  const history = useApprovalStore((state) => state.history);
+  const historyFetchState = useApprovalStore((state) => state.historyFetchState);
+  const historyError = useApprovalStore((state) => state.historyError);
+  const fetchHistory = useApprovalStore((state) => state.fetchHistory);
   const [now, setNow] = useState(() => new Date());
+  const [tab, setTab] = useState<"pending" | "history">("pending");
+  const [historyStatus, setHistoryStatus] = useState<ApprovalStatus | undefined>(undefined);
 
   useEffect(() => {
     void fetchApprovals();
@@ -128,41 +180,122 @@ function Approvals() {
     return () => clearInterval(interval);
   }, []);
 
+  // History is fetched on-demand (tab select / filter change), not polled -
+  // a decided approval never changes again, so there's nothing to poll for.
+  useEffect(() => {
+    if (tab === "history") void fetchHistory(historyStatus);
+  }, [tab, historyStatus, fetchHistory]);
+
   return (
     <div className="flex max-w-2xl flex-col gap-4">
-      <div className="flex items-center gap-2">
-        <p className="text-sm text-muted-foreground">
-          Gated tool calls and memory writes waiting on a human decision.
-        </p>
-        <Button
-          onClick={() => void fetchApprovals()}
-          size="sm"
-          disabled={fetchState === "loading"}
-          className="ml-auto"
+      <div className="flex items-center gap-1 border-b border-border">
+        <button
+          type="button"
+          onClick={() => setTab("pending")}
+          className={cn(
+            "border-b-2 px-3 py-1.5 text-sm",
+            tab === "pending"
+              ? "border-foreground font-medium"
+              : "border-transparent text-muted-foreground",
+          )}
         >
-          {fetchState === "loading" ? "Refreshing…" : "Refresh"}
-        </Button>
+          Pending
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("history")}
+          className={cn(
+            "border-b-2 px-3 py-1.5 text-sm",
+            tab === "history"
+              ? "border-foreground font-medium"
+              : "border-transparent text-muted-foreground",
+          )}
+        >
+          History
+        </button>
       </div>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {tab === "pending" ? (
+        <>
+          <div className="flex items-center gap-2">
+            <p className="text-sm text-muted-foreground">
+              Gated tool calls and memory writes waiting on a human decision.
+            </p>
+            <Button
+              onClick={() => void fetchApprovals()}
+              size="sm"
+              disabled={fetchState === "loading"}
+              className="ml-auto"
+            >
+              {fetchState === "loading" ? "Refreshing…" : "Refresh"}
+            </Button>
+          </div>
 
-      {approvals.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          {fetchState === "loading" ? "Loading…" : "No pending approvals."}
-        </p>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+
+          {approvals.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {fetchState === "loading" ? "Loading…" : "No pending approvals."}
+            </p>
+          ) : (
+            <ol className="flex flex-col gap-2">
+              {approvals.map((approval) => (
+                <ApprovalCard
+                  key={approval.id}
+                  approval={approval}
+                  now={now}
+                  deciding={decidingIds.includes(approval.id)}
+                  onApprove={(reason) => void approve(approval.id, reason || undefined)}
+                  onReject={(reason) => void reject(approval.id, reason || undefined)}
+                />
+              ))}
+            </ol>
+          )}
+        </>
       ) : (
-        <ol className="flex flex-col gap-2">
-          {approvals.map((approval) => (
-            <ApprovalCard
-              key={approval.id}
-              approval={approval}
-              now={now}
-              deciding={decidingIds.includes(approval.id)}
-              onApprove={(reason) => void approve(approval.id, reason || undefined)}
-              onReject={(reason) => void reject(approval.id, reason || undefined)}
-            />
-          ))}
-        </ol>
+        <>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap gap-1">
+              {HISTORY_STATUS_FILTERS.map((filter) => (
+                <button
+                  key={filter.label}
+                  type="button"
+                  onClick={() => setHistoryStatus(filter.value)}
+                  className={cn(
+                    "rounded-md px-2 py-1 text-xs",
+                    historyStatus === filter.value
+                      ? "bg-muted font-medium"
+                      : "text-muted-foreground hover:bg-muted",
+                  )}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+            <Button
+              onClick={() => void fetchHistory(historyStatus)}
+              size="sm"
+              disabled={historyFetchState === "loading"}
+              className="ml-auto"
+            >
+              {historyFetchState === "loading" ? "Refreshing…" : "Refresh"}
+            </Button>
+          </div>
+
+          {historyError && <p className="text-sm text-destructive">{historyError}</p>}
+
+          {history.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {historyFetchState === "loading" ? "Loading…" : "No approval history yet."}
+            </p>
+          ) : (
+            <ol className="flex flex-col gap-2">
+              {history.map((approval) => (
+                <HistoryCard key={approval.id} approval={approval} />
+              ))}
+            </ol>
+          )}
+        </>
       )}
     </div>
   );

@@ -33,6 +33,9 @@ beforeEach(() => {
     error: null,
     decidingIds: [],
     pendingCount: 0,
+    history: [],
+    historyFetchState: "idle",
+    historyError: null,
   });
   invokeMock.mockReset();
   listenMock.mockReset();
@@ -128,6 +131,39 @@ describe("useApprovalStore", () => {
     expect(state.fetchState).toBe("error");
     expect(state.error).toContain("Core unreachable");
     expect(state.approvals).toEqual([]);
+  });
+
+  it("fetchHistory calls get_approval_history with a null status by default and stores the result", async () => {
+    invokeMock.mockResolvedValueOnce([
+      approval({ status: "rejected", decided_at: "2026-07-18T12:05:00+00:00" }),
+    ]);
+
+    await useApprovalStore.getState().fetchHistory();
+
+    expect(invokeMock).toHaveBeenCalledWith("get_approval_history", { status: null });
+    const state = useApprovalStore.getState();
+    expect(state.historyFetchState).toBe("idle");
+    expect(state.history).toHaveLength(1);
+    expect(state.historyError).toBeNull();
+  });
+
+  it("fetchHistory passes an explicit status filter through", async () => {
+    invokeMock.mockResolvedValueOnce([]);
+
+    await useApprovalStore.getState().fetchHistory("cancelled");
+
+    expect(invokeMock).toHaveBeenCalledWith("get_approval_history", { status: "cancelled" });
+  });
+
+  it("sets historyFetchState to error when the invoke call itself fails", async () => {
+    invokeMock.mockRejectedValueOnce(new Error("Core unreachable"));
+
+    await useApprovalStore.getState().fetchHistory();
+
+    const state = useApprovalStore.getState();
+    expect(state.historyFetchState).toBe("error");
+    expect(state.historyError).toContain("Core unreachable");
+    expect(state.history).toEqual([]);
   });
 
   it("approve calls approve_approval with the id and reason, then applies the refreshed list", async () => {

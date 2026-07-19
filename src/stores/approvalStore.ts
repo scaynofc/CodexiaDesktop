@@ -56,6 +56,18 @@ interface ApprovalStore {
   approve: (approvalId: string, reason?: string) => Promise<void>;
   /** Rejects an approval - same shape as `approve`. */
   reject: (approvalId: string, reason?: string) => Promise<void>;
+
+  /** The History tab's full-approval-record list (every status, newest
+   * first) - a separate slice from `approvals` above (which is always the
+   * pending-only list, replaced wholesale by `approve`/`reject`), fetched
+   * on-demand rather than polled. See docs/adr/020-approval-history-view.md. */
+  history: Approval[];
+  historyFetchState: "idle" | "loading" | "error";
+  historyError: string | null;
+  /** Fetches full approval history via `get_approval_history`, optionally
+   * narrowed to one status - called on History tab select and on filter
+   * change. */
+  fetchHistory: (status?: ApprovalStatus) => Promise<void>;
 }
 
 let initPromise: Promise<void> | null = null;
@@ -121,6 +133,22 @@ export const useApprovalStore = create<ApprovalStore>((set, get) => ({
         error: String(error),
         decidingIds: get().decidingIds.filter((id) => id !== approvalId),
       });
+    }
+  },
+
+  history: [],
+  historyFetchState: "idle",
+  historyError: null,
+
+  fetchHistory: async (status?: ApprovalStatus) => {
+    set({ historyFetchState: "loading", historyError: null });
+    try {
+      const history = await invoke<Approval[]>("get_approval_history", {
+        status: status ?? null,
+      });
+      set({ history, historyFetchState: "idle" });
+    } catch (error) {
+      set({ historyFetchState: "error", historyError: String(error) });
     }
   },
 }));

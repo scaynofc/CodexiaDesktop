@@ -50,6 +50,7 @@ pub fn run() {
             commands::approve_approval,
             commands::reject_approval,
             commands::get_pending_approval_count,
+            commands::get_approval_history,
         ])
         .setup(|app| {
             let shared_status = ConnectionStatus::shared_initial();
